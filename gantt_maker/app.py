@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
-from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QItemSelectionModel
+from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QItemSelectionModel, QMimeData
 from PyQt6.QtGui import QAction, QColor, QCloseEvent, QKeySequence
 from PyQt6.QtWidgets import (
     QApplication,
@@ -101,6 +101,7 @@ class TaskTableWidget(QTableWidget):
         self.timeline_start_col = len(TASK_HEADERS)
         self.blank_row_index = 0
         self._drag_state: Optional[DragState] = None
+        self._dragged_task_index: Optional[int] = None
         self._block_cell = False
         self._undo_stack: List[List[Task]] = []
         self._suppress_selection_sync = False
@@ -123,6 +124,12 @@ class TaskTableWidget(QTableWidget):
         self.verticalHeader().setVisible(False)
         self.setMouseTracking(True)
         self.itemSelectionChanged.connect(self._limit_selection_to_text_columns)
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
+        self.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.setDragDropOverwriteMode(False)
 
     def _make_cell(self, *, selectable: bool = False) -> QTableWidgetItem:
         """Create a cell with the proper flags for timeline vs text columns."""
@@ -437,6 +444,8 @@ class TaskTableWidget(QTableWidget):
                         self._drag_state = DragState(row=row, edge="start")
                     elif period == end:
                         self._drag_state = DragState(row=row, edge="end")
+            if row >= 0 and row != self.blank_row_index and self._row_has_data(row):
+                self._dragged_task_index = self._row_to_task_index(row)
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):  # type: ignore[override]
@@ -455,11 +464,67 @@ class TaskTableWidget(QTableWidget):
                         self._write_int(self._drag_state.row, 2, period)
                 self._recolor_row(self._drag_state.row)
                 self.tasks_updated.emit(self.get_tasks())
+            return
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):  # type: ignore[override]
         self._drag_state = None
+        self._dragged_task_index = None
         super().mouseReleaseEvent(event)
+
+    def dragEnterEvent(self, event):  # type: ignore[override]
+        if event.source() is self:
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event):  # type: ignore[override]
+        if event.source() is self:
+            event.acceptProposedAction()
+        else:
+            super().dragMoveEvent(event)
+
+    def dropEvent(self, event):  # type: ignore[override]
+        if event.source() is not self:
+            event.ignore()
+            return
+        source_row = self.currentRow()
+        if source_row < 0 or source_row == self.blank_row_index or not self._row_has_data(source_row):
+            event.ignore()
+            return
+        tasks = self.get_tasks()
+        if len(tasks) < 2:
+            event.ignore()
+            return
+        source_idx = self._dragged_task_index
+        if source_idx is None:
+            source_idx = self._row_to_task_index_for_drop(source_row)
+        if source_idx is None:
+            event.ignore()
+            return
+        target_row = self.rowAt(int(event.position().y()))
+        insert_idx = self._compute_drop_insert_index(target_row, len(tasks))
+        if insert_idx is None:
+            event.ignore()
+            return
+        if insert_idx > source_idx:
+            insert_idx -= 1
+        if insert_idx == source_idx:
+            event.ignore()
+            return
+        self._push_undo_state()
+        task = tasks.pop(source_idx)
+        tasks.insert(insert_idx, task)
+        self.set_tasks(tasks)
+        new_row = self._row_from_task_index(insert_idx)
+        if new_row is not None:
+            self.selectRow(new_row)
+        event.acceptProposedAction()
+        self._dragged_task_index = None
+
+    def dropMimeData(self, row: int, column: int, data: QMimeData, action: Qt.DropAction) -> bool:  # type: ignore[override]
+        """Block the base class from inserting placeholder rows during drags."""
+        return False
 
     def _period_left_edge(self, period: int) -> int:
         """Translate a period index into pixel coordinates for drag math."""
@@ -493,6 +558,62 @@ class TaskTableWidget(QTableWidget):
             if index.column() >= self.timeline_start_col:
                 selection_model.select(index, QItemSelectionModel.SelectionFlag.Deselect)
         self._suppress_selection_sync = False
+
+    def _row_to_task_index(self, row: int) -> Optional[int]:
+        """Translate a table row into the corresponding task list index."""
+        idx = 0
+        for current_row in range(self.rowCount()):
+            if current_row == self.blank_row_index:
+                continue
+            if not self._row_has_data(current_row):
+                continue
+            if current_row == row:
+                return idx
+            idx += 1
+        return None
+
+    def _row_from_task_index(self, index: int) -> Optional[int]:
+        """Translate a task index back into the table row number."""
+        if index < 0:
+            return None
+        idx = 0
+        for current_row in range(self.rowCount()):
+            if current_row == self.blank_row_index:
+                continue
+            if not self._row_has_data(current_row):
+                continue
+            if idx == index:
+                return current_row
+            idx += 1
+        return None
+
+    def _row_to_task_index_for_drop(self, row: int) -> Optional[int]:
+        """Variant that returns the count of tasks above `row`, even if blank."""
+        if row < 0:
+            return None
+        idx = 0
+        for current_row in range(self.rowCount()):
+            if current_row == self.blank_row_index:
+                continue
+            if current_row == row:
+                return idx
+            if self._row_has_data(current_row):
+                idx += 1
+        return idx if row >= self.rowCount() else idx
+
+    def _compute_drop_insert_index(self, target_row: int, task_count: int) -> Optional[int]:
+        """Determine where the dragged task should be inserted after drop."""
+        indicator = self.dropIndicatorPosition()
+        if target_row == -1 or indicator == QAbstractItemView.DropIndicatorPosition.OnViewport:
+            return task_count
+        if target_row == self.blank_row_index:
+            return task_count
+        target_idx = self._row_to_task_index_for_drop(target_row)
+        if target_idx is None:
+            return None
+        if indicator == QAbstractItemView.DropIndicatorPosition.BelowItem:
+            target_idx += 1
+        return max(0, min(target_idx, task_count))
 
 
 class MainWindow(QMainWindow):

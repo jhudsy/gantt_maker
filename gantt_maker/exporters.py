@@ -66,6 +66,44 @@ def export_as_pdf(path: Path | str, duration: int, tasks: Iterable[Task], *, inc
     painter.end()
 
 
+def _compute_text_columns(font_metrics, content_rect, tasks: List[Task], include_dates: bool) -> List[tuple[str, int]]:
+    """Figure out how wide the Task/Start/End columns should be for PDF."""
+    longest_task = max((font_metrics.horizontalAdvance(task.name) for task in tasks), default=0)
+    proportional_cap = int(content_rect.width() * PDF_TASK_MAX_WIDTH_RATIO)
+    desired_width = longest_task + PDF_TASK_PADDING
+    name_width = max(PDF_TASK_MIN_WIDTH, min(desired_width, proportional_cap))
+    columns = [("Task", name_width)]
+    if include_dates:
+        columns.extend([("Start", PDF_START_END_WIDTH), ("End", PDF_START_END_WIDTH)])
+    return columns
+
+
+def _compute_timeline_layout(content_rect, text_columns, duration: int):
+    """Decide where the timeline columns begin and how wide each period is."""
+    text_total_width = sum(width for _, width in text_columns)
+    remaining = max(1, content_rect.width() - text_total_width)
+    duration = max(1, duration)
+    avg_col_width = remaining / duration
+    if avg_col_width < PDF_TIMELINE_MIN_COL_WIDTH:
+        col_width = PDF_TIMELINE_MIN_COL_WIDTH
+        timeline_total_width = col_width * duration
+        timeline_start_x = max(content_rect.left() + text_total_width, content_rect.right() - timeline_total_width)
+    else:
+        col_width = avg_col_width
+        timeline_total_width = remaining
+        timeline_start_x = content_rect.left() + text_total_width
+    return col_width, timeline_start_x
+
+
+def _compute_row_height(content_rect, duration: int, tasks: List[Task]):
+    """Compute a bounded row height so all tasks fit on the page."""
+    header_height = PDF_HEADER_HEIGHT
+    rows = max(1, len(tasks))
+    available_height = max(PDF_ROW_HEIGHT_MIN, content_rect.height() - header_height)
+    row_height = max(PDF_ROW_HEIGHT_MIN, min(PDF_ROW_HEIGHT_MAX, int(available_height / rows)))
+    return row_height
+
+
 def _draw_pdf_table(
     painter: QPainter,
     writer: QPdfWriter,
@@ -86,36 +124,10 @@ def _draw_pdf_table(
     painter.setPen(pen)
     font_metrics = painter.fontMetrics()
 
-    longest_task = max((font_metrics.horizontalAdvance(task.name) for task in tasks), default=0)
-    proportional_cap = int(content_rect.width() * PDF_TASK_MAX_WIDTH_RATIO)
-    desired_width = longest_task + PDF_TASK_PADDING
-    name_width = max(PDF_TASK_MIN_WIDTH, min(desired_width, proportional_cap))
-
-    text_columns: List[tuple[str, int]] = [("Task", name_width)]
-    if include_dates:
-        text_columns.extend(
-            [
-                ("Start", PDF_START_END_WIDTH),
-                ("End", PDF_START_END_WIDTH),
-            ]
-        )
-    text_total_width = sum(width for _, width in text_columns)
-    remaining = max(1, content_rect.width() - text_total_width)
-    duration = max(1, duration)
-    avg_col_width = remaining / duration
-    if avg_col_width < PDF_TIMELINE_MIN_COL_WIDTH:
-        col_width = PDF_TIMELINE_MIN_COL_WIDTH
-        timeline_total_width = col_width * duration
-        timeline_start_x = max(content_rect.left() + text_total_width, content_rect.right() - timeline_total_width)
-    else:
-        col_width = avg_col_width
-        timeline_total_width = remaining
-        timeline_start_x = content_rect.left() + text_total_width
-
+    text_columns = _compute_text_columns(font_metrics, content_rect, tasks, include_dates)
+    col_width, timeline_start_x = _compute_timeline_layout(content_rect, text_columns, duration)
+    row_height = _compute_row_height(content_rect, duration, tasks)
     header_height = PDF_HEADER_HEIGHT
-    rows = max(1, len(tasks))
-    available_height = max(PDF_ROW_HEIGHT_MIN, content_rect.height() - header_height)
-    row_height = max(PDF_ROW_HEIGHT_MIN, min(PDF_ROW_HEIGHT_MAX, int(available_height / rows)))
 
     header_y = content_rect.top()
     column_positions: List[float] = []

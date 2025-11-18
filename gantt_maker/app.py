@@ -85,7 +85,11 @@ class SummaryRowWidget(QTableWidget):
 
 
 class TaskTableWidget(QTableWidget):
-    """Task grid with embedded timeline visualization."""
+    """Task grid with embedded timeline visualization.
+
+    The widget keeps a trailing blank row as a buffer for new entries and
+    emits `tasks_updated` any time the underlying Task list changes.
+    """
 
     tasks_updated = pyqtSignal(list)
     undo_available = pyqtSignal(bool)
@@ -120,6 +124,13 @@ class TaskTableWidget(QTableWidget):
         self.setMouseTracking(True)
         self.itemSelectionChanged.connect(self._limit_selection_to_text_columns)
 
+    def _make_cell(self, *, selectable: bool = False) -> QTableWidgetItem:
+        """Create a cell with the proper flags for timeline vs text columns."""
+        item = QTableWidgetItem("")
+        if selectable:
+            item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+        return item
+
     def set_duration(self, duration: int) -> None:
         self.duration = max(1, duration)
         column_labels = TASK_HEADERS + [str(i + 1) for i in range(self.duration)]
@@ -148,17 +159,18 @@ class TaskTableWidget(QTableWidget):
             self.setColumnWidth(col, width)
         self.column_widths_updated.emit()
 
+    # --- Row lifecycle helpers -------------------------------------------------
+
     def _append_blank_row(self) -> None:
         row = self.rowCount()
         self.insertRow(row)
         self.blank_row_index = row
         for col in range(self.columnCount()):
-            item = QTableWidgetItem("")
-            if col >= self.timeline_start_col:
-                item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            item = self._make_cell(selectable=col >= self.timeline_start_col)
             self.setItem(row, col, item)
 
     def _ensure_blank_row(self) -> None:
+        """Keep a blank row at the bottom so users can type new tasks inline."""
         if not self._row_has_data(self.blank_row_index):
             return
         self._append_blank_row()
@@ -173,6 +185,7 @@ class TaskTableWidget(QTableWidget):
         return False
 
     def _show_context_menu(self, position: QPoint) -> None:
+        """Provide quick row actions (insert/toggle/delete/undo)."""
         index = self.indexAt(position)
         if not index.isValid():
             return
@@ -200,9 +213,7 @@ class TaskTableWidget(QTableWidget):
         insert_at = min(self.blank_row_index, row + 1)
         self.insertRow(insert_at)
         for col in range(self.columnCount()):
-            item = QTableWidgetItem("")
-            if col >= self.timeline_start_col:
-                item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            item = self._make_cell(selectable=col >= self.timeline_start_col)
             self.setItem(insert_at, col, item)
         if insert_at <= self.blank_row_index:
             self.blank_row_index += 1
@@ -245,6 +256,7 @@ class TaskTableWidget(QTableWidget):
         self.tasks_updated.emit(self.get_tasks())
 
     def _normalize_dates(self, row: int) -> None:
+        """Clamp start/end inputs to the project duration and keep start <= end."""
         has_start = self._cell_has_value(row, 1)
         has_end = self._cell_has_value(row, 2)
         if not has_start and not has_end:
@@ -299,11 +311,11 @@ class TaskTableWidget(QTableWidget):
             self._recolor_row(row)
 
     def _recolor_row(self, row: int, *, draw_bars: bool = True) -> None:
+        """Refresh the miniature bar visualization for a single row."""
         for col in range(self.timeline_start_col, self.columnCount()):
             item = self.item(row, col)
             if item is None:
-                item = QTableWidgetItem("")
-                item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+                item = self._make_cell(selectable=True)
                 self.setItem(row, col, item)
             item.setBackground(QColor("white"))
         if row == self.blank_row_index or not draw_bars:
@@ -320,8 +332,7 @@ class TaskTableWidget(QTableWidget):
             if 0 <= col < self.columnCount():
                 item = self.item(row, col)
                 if item is None:
-                    item = QTableWidgetItem("")
-                    item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+                    item = self._make_cell(selectable=True)
                     self.setItem(row, col, item)
                 item.setBackground(color)
 
@@ -361,9 +372,7 @@ class TaskTableWidget(QTableWidget):
             row = self.rowCount()
             self.insertRow(row)
             for col in range(self.columnCount()):
-                item = QTableWidgetItem("")
-                if col >= self.timeline_start_col:
-                    item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+                item = self._make_cell(selectable=col >= self.timeline_start_col)
                 self.setItem(row, col, item)
             self.item(row, 0).setText(task.name)
             self.item(row, 1).setText(str(task.start))
@@ -375,6 +384,7 @@ class TaskTableWidget(QTableWidget):
         self.tasks_updated.emit(self.get_tasks())
 
     def reset_undo_stack(self) -> None:
+        """Drop all undo history (used after opening a new project)."""
         self._undo_stack.clear()
         self._emit_undo_available()
 
@@ -387,12 +397,14 @@ class TaskTableWidget(QTableWidget):
         return True
 
     def _snapshot_tasks(self) -> List[Task]:
+        """Capture a deep copy of the current tasks for undo purposes."""
         return [
             Task(name=task.name, start=task.start, end=task.end, work_package=task.work_package)
             for task in self.get_tasks()
         ]
 
     def _push_undo_state(self) -> None:
+        """Persist the latest snapshot and trim the fixed-size undo buffer."""
         snapshot = self._snapshot_tasks()
         self._undo_stack.append(snapshot)
         if len(self._undo_stack) > _UNDO_STACK_LIMIT:
@@ -400,6 +412,7 @@ class TaskTableWidget(QTableWidget):
         self._emit_undo_available()
 
     def _emit_undo_available(self) -> None:
+        """Notify any listeners (menu items) that undo availability changed."""
         self.undo_available.emit(bool(self._undo_stack))
 
     # Drag handling -----------------------------------------------------
@@ -412,6 +425,7 @@ class TaskTableWidget(QTableWidget):
                 start = self._read_int(row, 1)
                 end = self._read_int(row, 2)
                 if start and end:
+                    # Detect drags even if users grab near, but not exactly on, the edge.
                     pointer_x = int(event.position().x())
                     start_edge = self._period_left_edge(start)
                     end_edge = self._period_right_edge(end)
@@ -448,6 +462,7 @@ class TaskTableWidget(QTableWidget):
         super().mouseReleaseEvent(event)
 
     def _period_left_edge(self, period: int) -> int:
+        """Translate a period index into pixel coordinates for drag math."""
         col = self.timeline_start_col + period - 1
         if col < 0 or col >= self.columnCount():
             return 0
@@ -455,6 +470,7 @@ class TaskTableWidget(QTableWidget):
         return max(0, position)
 
     def _period_right_edge(self, period: int) -> int:
+        """Same as `_period_left_edge`, but returns the right-hand boundary."""
         col = self.timeline_start_col + period - 1
         if col < 0 or col >= self.columnCount():
             return 0
@@ -463,6 +479,7 @@ class TaskTableWidget(QTableWidget):
         return max(0, position + width)
 
     def _limit_selection_to_text_columns(self) -> None:
+        """Prevent the timeline portion from highlighting so bars stay visible."""
         if self._suppress_selection_sync:
             return
         selection_model = self.selectionModel()
@@ -488,6 +505,7 @@ class MainWindow(QMainWindow):
         self.table = TaskTableWidget(_DEFAULT_DURATION)
         self.summary = SummaryRowWidget(_DEFAULT_DURATION)
         self.undo_action: QAction | None = None
+        # Wire up the table so the summary row and menu items stay in sync.
         self.table.tasks_updated.connect(self._update_summary)
         self.table.undo_available.connect(self._handle_undo_available)
         self.table.column_widths_updated.connect(self._mirror_all_column_widths)
@@ -497,6 +515,7 @@ class MainWindow(QMainWindow):
         self._resize_initial()
 
     def _build_layout(self) -> None:
+        """Stack the editable table and the summary density row."""
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.addWidget(self.table)
@@ -504,6 +523,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(container)
 
     def _build_menu(self) -> None:
+        """Create File/Edit menus along with shortcuts."""
         menu = self.menuBar()
         file_menu = menu.addMenu("File")
 
@@ -542,11 +562,13 @@ class MainWindow(QMainWindow):
         self.undo_action = undo_action
 
     def _resize_initial(self) -> None:
+        """Start with a generous window size so the timeline fits on screen."""
         width = self.table.horizontalHeader().length() + self.table.verticalHeader().width() + 100
         height = max(600, self.table.viewport().sizeHint().height() + 200)
         self.resize(int(max(width, 1000)), int(height))
 
     def _update_summary(self, tasks: List[Task]) -> None:
+        """Recalculate how many tasks overlap each period and mirror widths."""
         counts = [0] * self.table.duration
         for task in tasks:
             start = max(1, min(task.start, self.table.duration))
@@ -559,6 +581,7 @@ class MainWindow(QMainWindow):
 
     # Menu actions ------------------------------------------------------
     def action_new(self) -> None:
+        """Reset the table to a clean slate with a new duration."""
         duration, ok = QInputDialog.getInt(
             self,
             "Project duration",
@@ -577,6 +600,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Started new project", 3000)
 
     def action_open(self) -> None:
+        """Load a saved CSV project file into the table."""
         path, _ = QFileDialog.getOpenFileName(
             self,
             "Open project",
@@ -596,6 +620,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Loaded project from {path}", 3000)
 
     def action_save(self) -> None:
+        """Persist the minimal CSV format used for reopening projects."""
         if not self.current_path:
             path, _ = QFileDialog.getSaveFileName(
                 self,
@@ -611,6 +636,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Saved to {self.current_path}", 3000)
 
     def action_export(self) -> None:
+        """Export the richer CSV/PDF formats used for sharing."""
         path, selected_filter = QFileDialog.getSaveFileName(
             self,
             "Export project",
@@ -637,6 +663,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"Exported CSV to {path}", 3000)
 
     def action_change_duration(self) -> None:
+        """Prompt for a new duration and clamp existing tasks."""
         duration, ok = QInputDialog.getInt(
             self,
             "Change duration",
@@ -654,14 +681,17 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Duration set to {duration}", 3000)
 
     def _handle_undo_available(self, available: bool) -> None:
+        """Enable/disable the Edit → Undo delete action based on history."""
         if self.undo_action is not None:
             self.undo_action.setEnabled(available)
 
     def _handle_undo_request(self) -> None:
+        """Trigger a restore of the most recent deletion."""
         if self.table.undo_last_change():
             self.statusBar().showMessage("Restored last deleted row", 3000)
 
     def _mirror_all_column_widths(self) -> None:
+        """Keep the summary row perfectly aligned with the main table."""
         if self.summary.columnCount() != self.table.columnCount():
             self.summary.set_duration(self.table.duration)
         columns = min(self.summary.columnCount(), self.table.columnCount())
@@ -669,6 +699,7 @@ class MainWindow(QMainWindow):
             self.summary.setColumnWidth(col, self.table.columnWidth(col))
 
     def closeEvent(self, event: QCloseEvent) -> None:  # pragma: no cover - requires UI
+        """Ask for confirmation before closing the application."""
         if QMessageBox.question(self, "Quit", "Close Gantt Maker?") == QMessageBox.StandardButton.Yes:
             event.accept()
         else:
@@ -676,6 +707,7 @@ class MainWindow(QMainWindow):
 
 
 def run() -> None:
+    """Entry point used by `python -m gantt_maker`."""
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()

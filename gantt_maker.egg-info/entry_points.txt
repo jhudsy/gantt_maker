@@ -1,0 +1,2 @@
+[console_scripts]
+gantt-maker = gantt_maker.app:run

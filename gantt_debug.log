@@ -1,0 +1,282 @@
+2025-11-18 16:47:04,028 [INFO] Starting Gantt Maker
+2025-11-18 16:47:04,223 [DEBUG] Configuring column widths: name=336 start/end=32 viz=26 duration=20
+2025-11-18 16:47:04,225 [DEBUG] Initialized TaskTableWidget duration=20
+2025-11-18 16:47:04,225 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:04,225 [DEBUG] Summary counts: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+2025-11-18 16:47:04,225 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:04,225 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:10,643 [DEBUG] Ignore cell change from visualization row=0 col=3
+2025-11-18 16:47:10,644 [DEBUG] Ignore cell change from visualization row=0 col=4
+2025-11-18 16:47:10,644 [DEBUG] Ignore cell change from visualization row=0 col=5
+2025-11-18 16:47:10,644 [DEBUG] Ignore cell change from visualization row=0 col=6
+2025-11-18 16:47:10,644 [DEBUG] Ignore cell change from visualization row=0 col=7
+2025-11-18 16:47:10,644 [DEBUG] Ignore cell change from visualization row=0 col=8
+2025-11-18 16:47:10,644 [DEBUG] Ignore cell change from visualization row=0 col=9
+2025-11-18 16:47:10,644 [DEBUG] Ignore cell change from visualization row=0 col=10
+2025-11-18 16:47:10,645 [DEBUG] Ignore cell change from visualization row=0 col=11
+2025-11-18 16:47:10,645 [DEBUG] Ignore cell change from visualization row=0 col=12
+2025-11-18 16:47:10,645 [DEBUG] Ignore cell change from visualization row=0 col=13
+2025-11-18 16:47:10,645 [DEBUG] Ignore cell change from visualization row=0 col=14
+2025-11-18 16:47:10,645 [DEBUG] Ignore cell change from visualization row=0 col=15
+2025-11-18 16:47:10,645 [DEBUG] Ignore cell change from visualization row=0 col=16
+2025-11-18 16:47:10,645 [DEBUG] Ignore cell change from visualization row=0 col=17
+2025-11-18 16:47:10,645 [DEBUG] Ignore cell change from visualization row=0 col=18
+2025-11-18 16:47:10,645 [DEBUG] Ignore cell change from visualization row=0 col=19
+2025-11-18 16:47:10,645 [DEBUG] Ignore cell change from visualization row=0 col=20
+2025-11-18 16:47:10,645 [DEBUG] Ignore cell change from visualization row=0 col=21
+2025-11-18 16:47:10,645 [DEBUG] Ignore cell change from visualization row=0 col=22
+2025-11-18 16:47:10,645 [DEBUG] Skip recolor row=0 draw_bars=False
+2025-11-18 16:47:10,646 [DEBUG] Summary counts: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+2025-11-18 16:47:10,647 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:10,647 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:11,495 [DEBUG] Cell change: row=0 col=1 start=5 end=
+2025-11-18 16:47:11,496 [DEBUG] Normalize dates row=0 has_start=True has_end=False
+2025-11-18 16:47:11,496 [DEBUG] Skip recolor row=0 draw_bars=False
+2025-11-18 16:47:11,496 [DEBUG] Summary counts: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+2025-11-18 16:47:11,496 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:11,497 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:13,365 [DEBUG] Cell change: row=0 col=2 start=5 end=23
+2025-11-18 16:47:13,366 [DEBUG] Normalize dates row=0 has_start=True has_end=True
+2025-11-18 16:47:13,366 [DEBUG] Normalized row=0 final start=5 end=20
+2025-11-18 16:47:13,366 [DEBUG] Ignore cell change from visualization row=0 col=7
+2025-11-18 16:47:13,366 [DEBUG] Ignore cell change from visualization row=0 col=8
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=9
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=10
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=11
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=12
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=13
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=14
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=15
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=16
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=17
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=18
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=19
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=20
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=21
+2025-11-18 16:47:13,367 [DEBUG] Ignore cell change from visualization row=0 col=22
+2025-11-18 16:47:13,368 [DEBUG] Summary counts: [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+2025-11-18 16:47:13,368 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:13,368 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:20,948 [DEBUG] Cell change: row=0 col=2 start=5 end=14
+2025-11-18 16:47:20,948 [DEBUG] Normalize dates row=0 has_start=True has_end=True
+2025-11-18 16:47:20,948 [DEBUG] Normalized row=0 final start=5 end=14
+2025-11-18 16:47:20,949 [DEBUG] Ignore cell change from visualization row=0 col=7
+2025-11-18 16:47:20,949 [DEBUG] Ignore cell change from visualization row=0 col=8
+2025-11-18 16:47:20,949 [DEBUG] Ignore cell change from visualization row=0 col=9
+2025-11-18 16:47:20,949 [DEBUG] Ignore cell change from visualization row=0 col=10
+2025-11-18 16:47:20,949 [DEBUG] Ignore cell change from visualization row=0 col=11
+2025-11-18 16:47:20,949 [DEBUG] Ignore cell change from visualization row=0 col=12
+2025-11-18 16:47:20,949 [DEBUG] Ignore cell change from visualization row=0 col=13
+2025-11-18 16:47:20,949 [DEBUG] Ignore cell change from visualization row=0 col=14
+2025-11-18 16:47:20,949 [DEBUG] Ignore cell change from visualization row=0 col=15
+2025-11-18 16:47:20,949 [DEBUG] Ignore cell change from visualization row=0 col=16
+2025-11-18 16:47:20,949 [DEBUG] Ignore cell change from visualization row=0 col=17
+2025-11-18 16:47:20,949 [DEBUG] Ignore cell change from visualization row=0 col=18
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=19
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=20
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=21
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=22
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=7
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=8
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=9
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=10
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=11
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=12
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=13
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=14
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=15
+2025-11-18 16:47:20,950 [DEBUG] Ignore cell change from visualization row=0 col=16
+2025-11-18 16:47:20,950 [DEBUG] Summary counts: [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0]
+2025-11-18 16:47:20,950 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:20,950 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:26,637 [DEBUG] Ignore cell change from visualization row=1 col=3
+2025-11-18 16:47:26,637 [DEBUG] Ignore cell change from visualization row=1 col=4
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=5
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=6
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=7
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=8
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=9
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=10
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=11
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=12
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=13
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=14
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=15
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=16
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=17
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=18
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=19
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=20
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=21
+2025-11-18 16:47:26,638 [DEBUG] Ignore cell change from visualization row=1 col=22
+2025-11-18 16:47:26,638 [DEBUG] Skip recolor row=1 draw_bars=False
+2025-11-18 16:47:26,639 [DEBUG] Summary counts: [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0]
+2025-11-18 16:47:26,639 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:26,639 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:29,068 [DEBUG] Skip recolor row=1 draw_bars=False
+2025-11-18 16:47:29,068 [DEBUG] Summary counts: [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0]
+2025-11-18 16:47:29,068 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:29,068 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:29,068 [DEBUG] Missing bounds row=1 start=0 end=0
+2025-11-18 16:47:29,069 [DEBUG] Summary counts: [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0]
+2025-11-18 16:47:29,069 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:29,069 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:33,917 [DEBUG] Cell change: row=1 col=1 start=8 end=
+2025-11-18 16:47:33,917 [DEBUG] Normalize dates row=1 has_start=True has_end=False
+2025-11-18 16:47:33,918 [DEBUG] Skip recolor row=1 draw_bars=False
+2025-11-18 16:47:33,918 [DEBUG] Summary counts: [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0]
+2025-11-18 16:47:33,918 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:33,918 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:36,024 [DEBUG] Cell change: row=1 col=2 start=8 end=16
+2025-11-18 16:47:36,025 [DEBUG] Normalize dates row=1 has_start=True has_end=True
+2025-11-18 16:47:36,025 [DEBUG] Normalized row=1 final start=8 end=16
+2025-11-18 16:47:36,026 [DEBUG] Ignore cell change from visualization row=1 col=10
+2025-11-18 16:47:36,026 [DEBUG] Ignore cell change from visualization row=1 col=11
+2025-11-18 16:47:36,026 [DEBUG] Ignore cell change from visualization row=1 col=12
+2025-11-18 16:47:36,026 [DEBUG] Ignore cell change from visualization row=1 col=13
+2025-11-18 16:47:36,026 [DEBUG] Ignore cell change from visualization row=1 col=14
+2025-11-18 16:47:36,026 [DEBUG] Ignore cell change from visualization row=1 col=15
+2025-11-18 16:47:36,026 [DEBUG] Ignore cell change from visualization row=1 col=16
+2025-11-18 16:47:36,027 [DEBUG] Ignore cell change from visualization row=1 col=17
+2025-11-18 16:47:36,027 [DEBUG] Ignore cell change from visualization row=1 col=18
+2025-11-18 16:47:36,027 [DEBUG] Summary counts: [0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0]
+2025-11-18 16:47:36,027 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:36,027 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:44,019 [DEBUG] Ignore cell change from visualization row=2 col=3
+2025-11-18 16:47:44,019 [DEBUG] Ignore cell change from visualization row=2 col=4
+2025-11-18 16:47:44,019 [DEBUG] Ignore cell change from visualization row=2 col=5
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=6
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=7
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=8
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=9
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=10
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=11
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=12
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=13
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=14
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=15
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=16
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=17
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=18
+2025-11-18 16:47:44,020 [DEBUG] Ignore cell change from visualization row=2 col=19
+2025-11-18 16:47:44,021 [DEBUG] Ignore cell change from visualization row=2 col=20
+2025-11-18 16:47:44,021 [DEBUG] Ignore cell change from visualization row=2 col=21
+2025-11-18 16:47:44,021 [DEBUG] Ignore cell change from visualization row=2 col=22
+2025-11-18 16:47:44,021 [DEBUG] Skip recolor row=2 draw_bars=False
+2025-11-18 16:47:44,022 [DEBUG] Summary counts: [0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0]
+2025-11-18 16:47:44,022 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:44,022 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:45,482 [DEBUG] Cell change: row=2 col=1 start=1 end=
+2025-11-18 16:47:45,483 [DEBUG] Normalize dates row=2 has_start=True has_end=False
+2025-11-18 16:47:45,483 [DEBUG] Skip recolor row=2 draw_bars=False
+2025-11-18 16:47:45,483 [DEBUG] Summary counts: [0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0]
+2025-11-18 16:47:45,483 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:45,483 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:46,357 [DEBUG] Cell change: row=2 col=2 start=1 end=4
+2025-11-18 16:47:46,357 [DEBUG] Normalize dates row=2 has_start=True has_end=True
+2025-11-18 16:47:46,357 [DEBUG] Normalized row=2 final start=1 end=4
+2025-11-18 16:47:46,358 [DEBUG] Ignore cell change from visualization row=2 col=3
+2025-11-18 16:47:46,358 [DEBUG] Ignore cell change from visualization row=2 col=4
+2025-11-18 16:47:46,358 [DEBUG] Ignore cell change from visualization row=2 col=5
+2025-11-18 16:47:46,358 [DEBUG] Ignore cell change from visualization row=2 col=6
+2025-11-18 16:47:46,358 [DEBUG] Summary counts: [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0]
+2025-11-18 16:47:46,358 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:46,358 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:51,861 [DEBUG] Ignore cell change from visualization row=3 col=3
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=4
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=5
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=6
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=7
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=8
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=9
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=10
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=11
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=12
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=13
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=14
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=15
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=16
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=17
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=18
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=19
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=20
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=21
+2025-11-18 16:47:51,862 [DEBUG] Ignore cell change from visualization row=3 col=22
+2025-11-18 16:47:51,862 [DEBUG] Skip recolor row=3 draw_bars=False
+2025-11-18 16:47:51,863 [DEBUG] Summary counts: [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0]
+2025-11-18 16:47:51,863 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:51,863 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:54,280 [DEBUG] Cell change: row=3 col=1 start=6 end=
+2025-11-18 16:47:54,281 [DEBUG] Normalize dates row=3 has_start=True has_end=False
+2025-11-18 16:47:54,281 [DEBUG] Skip recolor row=3 draw_bars=False
+2025-11-18 16:47:54,281 [DEBUG] Summary counts: [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0]
+2025-11-18 16:47:54,282 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:54,282 [DEBUG] Mirror column widths count=23
+2025-11-18 16:47:55,833 [DEBUG] Cell change: row=3 col=2 start=6 end=8
+2025-11-18 16:47:55,833 [DEBUG] Normalize dates row=3 has_start=True has_end=True
+2025-11-18 16:47:55,833 [DEBUG] Normalized row=3 final start=6 end=8
+2025-11-18 16:47:55,834 [DEBUG] Ignore cell change from visualization row=3 col=8
+2025-11-18 16:47:55,834 [DEBUG] Ignore cell change from visualization row=3 col=9
+2025-11-18 16:47:55,834 [DEBUG] Ignore cell change from visualization row=3 col=10
+2025-11-18 16:47:55,834 [DEBUG] Summary counts: [1, 1, 1, 1, 1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0]
+2025-11-18 16:47:55,834 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:47:55,834 [DEBUG] Mirror column widths count=23
+2025-11-18 16:49:27,097 [DEBUG] Ignore cell change from visualization row=4 col=3
+2025-11-18 16:49:27,098 [DEBUG] Ignore cell change from visualization row=4 col=4
+2025-11-18 16:49:27,098 [DEBUG] Ignore cell change from visualization row=4 col=5
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=6
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=7
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=8
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=9
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=10
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=11
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=12
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=13
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=14
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=15
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=16
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=17
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=18
+2025-11-18 16:49:27,099 [DEBUG] Ignore cell change from visualization row=4 col=19
+2025-11-18 16:49:27,100 [DEBUG] Ignore cell change from visualization row=4 col=20
+2025-11-18 16:49:27,100 [DEBUG] Ignore cell change from visualization row=4 col=21
+2025-11-18 16:49:27,100 [DEBUG] Ignore cell change from visualization row=4 col=22
+2025-11-18 16:49:27,100 [DEBUG] Skip recolor row=4 draw_bars=False
+2025-11-18 16:49:27,101 [DEBUG] Summary counts: [1, 1, 1, 1, 1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0]
+2025-11-18 16:49:27,101 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:49:27,101 [DEBUG] Mirror column widths count=23
+2025-11-18 16:49:31,947 [DEBUG] Cell change: row=4 col=1 start=7 end=
+2025-11-18 16:49:31,947 [DEBUG] Normalize dates row=4 has_start=True has_end=False
+2025-11-18 16:49:31,947 [DEBUG] Skip recolor row=4 draw_bars=False
+2025-11-18 16:49:31,948 [DEBUG] Summary counts: [1, 1, 1, 1, 1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0]
+2025-11-18 16:49:31,948 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:49:31,948 [DEBUG] Mirror column widths count=23
+2025-11-18 16:49:33,181 [DEBUG] Cell change: row=4 col=2 start=7 end=11
+2025-11-18 16:49:33,182 [DEBUG] Normalize dates row=4 has_start=True has_end=True
+2025-11-18 16:49:33,182 [DEBUG] Normalized row=4 final start=7 end=11
+2025-11-18 16:49:33,182 [DEBUG] Ignore cell change from visualization row=4 col=9
+2025-11-18 16:49:33,182 [DEBUG] Ignore cell change from visualization row=4 col=10
+2025-11-18 16:49:33,183 [DEBUG] Ignore cell change from visualization row=4 col=11
+2025-11-18 16:49:33,183 [DEBUG] Ignore cell change from visualization row=4 col=12
+2025-11-18 16:49:33,183 [DEBUG] Ignore cell change from visualization row=4 col=13
+2025-11-18 16:49:33,183 [DEBUG] Summary counts: [1, 1, 1, 1, 1, 2, 3, 4, 3, 3, 3, 2, 2, 2, 1, 1, 0, 0, 0, 0]
+2025-11-18 16:49:33,183 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:49:33,183 [DEBUG] Mirror column widths count=23
+2025-11-18 16:49:37,718 [DEBUG] Ignore cell change from visualization row=3 col=8
+2025-11-18 16:49:37,719 [DEBUG] Ignore cell change from visualization row=3 col=9
+2025-11-18 16:49:37,719 [DEBUG] Ignore cell change from visualization row=3 col=10
+2025-11-18 16:49:37,719 [DEBUG] Ignore cell change from visualization row=3 col=8
+2025-11-18 16:49:37,719 [DEBUG] Ignore cell change from visualization row=3 col=9
+2025-11-18 16:49:37,719 [DEBUG] Ignore cell change from visualization row=3 col=10
+2025-11-18 16:49:37,719 [DEBUG] Summary counts: [1, 1, 1, 1, 1, 2, 3, 4, 3, 3, 3, 2, 2, 2, 1, 1, 0, 0, 0, 0]
+2025-11-18 16:49:37,719 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:49:37,719 [DEBUG] Mirror column widths count=23
+2025-11-18 16:49:37,719 [DEBUG] Ignore cell change from visualization row=3 col=8
+2025-11-18 16:49:37,719 [DEBUG] Ignore cell change from visualization row=3 col=9
+2025-11-18 16:49:37,719 [DEBUG] Ignore cell change from visualization row=3 col=10
+2025-11-18 16:49:37,719 [DEBUG] Ignore cell change from visualization row=3 col=8
+2025-11-18 16:49:37,719 [DEBUG] Ignore cell change from visualization row=3 col=9
+2025-11-18 16:49:37,720 [DEBUG] Ignore cell change from visualization row=3 col=10
+2025-11-18 16:49:37,720 [DEBUG] Summary counts: [1, 1, 1, 1, 1, 2, 3, 4, 3, 3, 3, 2, 2, 2, 1, 1, 0, 0, 0, 0]
+2025-11-18 16:49:37,720 [DEBUG] Summary duration update: 20 columns
+2025-11-18 16:49:37,720 [DEBUG] Mirror column widths count=23

@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gantt-maker"
+version = "0.1.0"
+description = "Interactive PyQt6-based Gantt chart builder"
+readme = "README.md"
+authors = [{name = "Gantt Maker Team"}]
+requires-python = ">=3.10"
+dependencies = [
+    "PyQt6>=6.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+gantt-maker = "gantt_maker.app:run"

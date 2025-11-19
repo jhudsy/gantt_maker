@@ -11,7 +11,9 @@ New creates a new Gantt chart (see below), while Open opens an existing gantt ch
 
 When new is selected the user is prompted (via a dialogue) as to how long the project will run. This is an integer. The user is then shown a blank project.
 
-The project itself can be best thought of as a table with 4 areas namely a textual "task name", integer "start" and "end"  values and a visualisation area.
+The project itself can be best thought of as a table with 4 areas namely a textual "task name", integer "start" and "end" values and a visualisation area. The task-name column now supports manual resizing directly from its header so users can widen it for lengthy labels or shrink it to create more space for the schedule grid; the summary row mirrors the same width to keep the layout aligned.
+
+Rows can be reordered directly in the UI: drag any populated row by its task cell (or row header) and drop it where the insertion guide appears. The blank append row is ignored during this process, undo snapshots are captured before the move, and the summary row automatically mirrors the new ordering.
 
 The visualisation area is itself a table with columns ranging from 1 to the project duration.
 
@@ -24,6 +26,10 @@ The user can also drag the edges of the bar in the visualisation area left and r
 At the very bottom of the visualisation area is a summary. For each column it displays the number of tasks which exist at that point in time.
 
 Finally, the user can select a row as a "Work package" (again via right-clicking). These work packages are logical groups of tasks and should be highlighted appropriately when exported. The user can also de-select a row as a workpackage if it was selected as one previously.
+
+# Command-line loading
+
+Running `python -m gantt_maker <project.csv>` (or passing a path into `run(path=...)`) instructs the application to load that CSV immediately after the main window appears. If the first CLI argument is omitted or the file does not exist, the app simply falls back to spawning a fresh project and notifies the user when auto-open fails.
 
 # Open and Save
 

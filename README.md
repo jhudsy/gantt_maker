@@ -29,6 +29,8 @@ pip install -e '.[dev]'
 python -m gantt_maker
 ```
 
+You can also pass a CSV path directly (e.g., `python -m gantt_maker my_project.csv`) and the file will open automatically on launch.
+
 Use the File menu to create a new project (you will be prompted for the duration), open existing CSV files, save progress, or export to CSV/PDF. Right-click rows inside the table to insert new rows or toggle work-package highlighting.
 
 ### Adjusting the duration

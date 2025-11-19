@@ -130,6 +130,8 @@ class TaskTableWidget(QTableWidget):
         self.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
         self.setDragDropOverwriteMode(False)
+        header = self.horizontalHeader()
+        header.sectionResized.connect(self._handle_header_resized)
 
     def _make_cell(self, *, selectable: bool = False) -> QTableWidgetItem:
         """Create a cell with the proper flags for timeline vs text columns."""
@@ -161,7 +163,10 @@ class TaskTableWidget(QTableWidget):
         }
 
         for col in range(self.columnCount()):
-            header.setSectionResizeMode(col, QHeaderView.ResizeMode.Fixed)
+            resize_mode = (
+                QHeaderView.ResizeMode.Interactive if col == 0 else QHeaderView.ResizeMode.Fixed
+            )
+            header.setSectionResizeMode(col, resize_mode)
             width = target_widths.get(col, viz_width if col >= self.timeline_start_col else numeric_width)
             self.setColumnWidth(col, width)
         self.column_widths_updated.emit()
@@ -421,6 +426,10 @@ class TaskTableWidget(QTableWidget):
     def _emit_undo_available(self) -> None:
         """Notify any listeners (menu items) that undo availability changed."""
         self.undo_available.emit(bool(self._undo_stack))
+
+    def _handle_header_resized(self, _section: int, _old: int, _new: int) -> None:
+        """Mirror user-driven column width changes to the summary row."""
+        self.column_widths_updated.emit()
 
     # Drag handling -----------------------------------------------------
     def mousePressEvent(self, event):  # type: ignore[override]
@@ -827,10 +836,32 @@ class MainWindow(QMainWindow):
             event.ignore()
 
 
-def run() -> None:
-    """Entry point used by `python -m gantt_maker`."""
+def run(path: str | None = None) -> None:
+    """Entry point used by `python -m gantt_maker`.
+
+    If `path` is provided (or a CLI argument is passed), attempt to open that project
+    immediately after the window is created.
+    """
     app = QApplication(sys.argv)
     window = MainWindow()
+    file_to_open = path
+    if file_to_open is None and len(sys.argv) > 1:
+        file_to_open = sys.argv[1]
+    if file_to_open:
+        file_path = Path(file_to_open)
+        if file_path.exists():
+            try:
+                duration, tasks = load_project(file_path)
+            except Exception as exc:  # pragma: no cover - interactive guard
+                QMessageBox.critical(window, "Auto-open failed", str(exc))
+            else:
+                window.table.set_duration(duration)
+                window.table.set_tasks(tasks)
+                window.table.reset_undo_stack()
+                window.current_path = file_path
+                window.statusBar().showMessage(f"Loaded project from {file_path}", 3000)
+        else:  # pragma: no cover - interactive guard
+            QMessageBox.warning(window, "File not found", f"{file_to_open} does not exist.")
     window.show()
     app.exec()
 

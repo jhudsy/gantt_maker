@@ -1,3 +1,4 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 
 from gantt_maker.app import TaskTableWidget
@@ -5,7 +6,7 @@ from gantt_maker.models import Task
 
 
 def _snapshot(tasks):
-    return [Task(name=t.name, start=t.start, end=t.end, work_package=t.work_package) for t in tasks]
+    return [Task(name=t.name, start=t.start, end=t.end, work_package=t.work_package, segments=list(t.segments)) for t in tasks]
 
 
 def test_change_duration_preserves_partial_rows(qapp: QApplication) -> None:
@@ -26,3 +27,37 @@ def test_change_duration_preserves_partial_rows(qapp: QApplication) -> None:
 
     assert table.duration == 12
     assert table.get_tasks() == baseline
+
+
+def test_split_task_creates_complex_segments(qapp: QApplication) -> None:
+    table = TaskTableWidget(10)
+    table.set_tasks([Task(name="Phase", start=1, end=6)])
+
+    table._split_task_at_period(0, 3)
+
+    segments = table._get_row_segments(0)
+    assert segments == [(1, 2), (4, 6)]
+    start_item = table.item(0, 1)
+    end_item = table.item(0, 2)
+    assert start_item.text() == "1"
+    assert end_item.text() == "6"
+    assert not (start_item.flags() & Qt.ItemFlag.ItemIsEditable)
+    assert not (end_item.flags() & Qt.ItemFlag.ItemIsEditable)
+
+    tasks = table.get_tasks()
+    assert tasks[0].segments == segments
+
+
+def test_complex_intervals_merge_back_to_simple(qapp: QApplication) -> None:
+    table = TaskTableWidget(10)
+    table.set_tasks([Task(name="Phase", start=1, end=6)])
+    table._set_row_segments(0, [(1, 2), (4, 6)])
+
+    assert table._is_complex_row(0)
+
+    table._set_row_segments(0, [(1, 6)])
+
+    segments = table._get_row_segments(0)
+    assert segments == [(1, 6)]
+    start_item = table.item(0, 1)
+    assert start_item.flags() & Qt.ItemFlag.ItemIsEditable

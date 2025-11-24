@@ -12,6 +12,7 @@ def test_export_csv_handles_partial_tasks(tmp_path: Path) -> None:
         Task(name="Start only", start=2),
         Task(name="Active", start=1, end=3, work_package=False),
         Task(name="Package", start=2, end=4, work_package=True),
+        Task(name="Complex", segments=[(1, 1), (3, 4)]),
     ]
 
     export_as_csv(path, duration=4, tasks=tasks)
@@ -32,3 +33,6 @@ def test_export_csv_handles_partial_tasks(tmp_path: Path) -> None:
 
     assert rows[4][:3] == ["Package", "2", "4"]
     assert rows[4][3:] == ["", "W", "W", "W"]
+
+    assert rows[5][:3] == ["Complex", "1", "4"]
+    assert rows[5][3:] == ["X", "", "X", "X"]

@@ -4,7 +4,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QItemSelectionModel, QMimeData
 from PyQt6.QtGui import QAction, QColor, QCloseEvent, QKeySequence
@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
+    QHBoxLayout,
     QWidget,
     QAbstractItemView,
     QHeaderView,
@@ -32,12 +33,14 @@ TASK_HEADERS = ["Task", "Start", "End"]
 _DEFAULT_DURATION = 20
 _UNDO_STACK_LIMIT = 20
 _DRAG_HANDLE_TOLERANCE = 6
+_SEGMENTS_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 
 
 @dataclass(slots=True)
 class DragState:
     row: int
     edge: str  # "start" or "end"
+    segment_index: Optional[int] = None
 
 
 class SummaryRowWidget(QTableWidget):
@@ -202,12 +205,20 @@ class TaskTableWidget(QTableWidget):
         if not index.isValid():
             return
         row = index.row()
+        col = index.column()
         if row == self.blank_row_index:
             return
         menu = QMenu(self)
         insert_action = menu.addAction("Insert row")
         toggle_action = menu.addAction("Toggle work package")
+        toggle_action.setCheckable(True)
+        toggle_action.setChecked(self._is_work_package(row))
         delete_action = menu.addAction("Delete row")
+        split_action = None
+        if col >= self.timeline_start_col:
+            period = col - self.timeline_start_col + 1
+            if self._period_is_active(row, period):
+                split_action = menu.addAction(f"Split at period {period}")
         menu.addSeparator()
         undo_action = menu.addAction("Undo delete")
         undo_action.setEnabled(bool(self._undo_stack))
@@ -218,6 +229,9 @@ class TaskTableWidget(QTableWidget):
             self._toggle_work_package(row)
         elif action == delete_action:
             self._delete_row(row)
+        elif action == split_action:
+            split_period = col - self.timeline_start_col + 1
+            self._split_task_at_period(row, split_period)
         elif action == undo_action:
             self.undo_last_change()
 
@@ -269,6 +283,8 @@ class TaskTableWidget(QTableWidget):
 
     def _normalize_dates(self, row: int) -> None:
         """Clamp start/end inputs to the project duration and keep start <= end."""
+        if self._is_complex_row(row):
+            return
         start = self._read_optional_int(row, 1)
         end = self._read_optional_int(row, 2)
         if start is None and end is None:
@@ -326,6 +342,107 @@ class TaskTableWidget(QTableWidget):
     def _write_int(self, row: int, col: int, value: int) -> None:
         self._write_optional_int(row, col, value)
 
+    def _get_row_segments(self, row: int) -> List[tuple[int, int]]:
+        item = self.item(row, 0)
+        stored = item.data(_SEGMENTS_ROLE) if item else None
+        if stored:
+            segments: List[tuple[int, int]] = []
+            for pair in stored:
+                if isinstance(pair, (tuple, list)) and len(pair) == 2:
+                    try:
+                        segments.append((int(pair[0]), int(pair[1])))
+                    except (TypeError, ValueError):
+                        continue
+            if segments:
+                return segments
+        start = self._read_optional_int(row, 1)
+        end = self._read_optional_int(row, 2)
+        if start is None or end is None:
+            return []
+        return [(start, end)]
+
+    def _set_row_segments(self, row: int, segments: List[tuple[int, int]]) -> None:
+        item = self.item(row, 0)
+        if item is None:
+            item = QTableWidgetItem("")
+            self.setItem(row, 0, item)
+        normalized = self._normalize_segments_list(segments)
+        if len(normalized) > 1:
+            item.setData(_SEGMENTS_ROLE, list(normalized))
+            self._set_date_cells_editable(row, False)
+        else:
+            item.setData(_SEGMENTS_ROLE, None)
+            self._set_date_cells_editable(row, True)
+        if normalized:
+            self._write_optional_int(row, 1, normalized[0][0])
+            self._write_optional_int(row, 2, normalized[-1][1])
+        else:
+            self._write_optional_int(row, 1, None)
+            self._write_optional_int(row, 2, None)
+
+    def _is_complex_row(self, row: int) -> bool:
+        item = self.item(row, 0)
+        stored = item.data(_SEGMENTS_ROLE) if item else None
+        return bool(stored)
+
+    def _set_date_cells_editable(self, row: int, editable: bool) -> None:
+        for col in (1, 2):
+            item = self.item(row, col)
+            if item is None:
+                item = QTableWidgetItem()
+                self.setItem(row, col, item)
+            flags = item.flags()
+            if editable:
+                flags |= Qt.ItemFlag.ItemIsEditable
+            else:
+                flags &= ~Qt.ItemFlag.ItemIsEditable
+            item.setFlags(flags)
+
+    def _normalize_segments_list(self, segments: List[tuple[int, int]]) -> List[tuple[int, int]]:
+        cleaned: List[tuple[int, int]] = []
+        for start, end in segments:
+            start = self._clamp_value(start)
+            end = self._clamp_value(end)
+            if start > end:
+                start, end = end, start
+            cleaned.append((start, end))
+        cleaned.sort()
+        merged: List[tuple[int, int]] = []
+        for start, end in cleaned:
+            if not merged:
+                merged.append((start, end))
+                continue
+            prev_start, prev_end = merged[-1]
+            if start <= prev_end + 1:
+                merged[-1] = (prev_start, max(prev_end, end))
+            else:
+                merged.append((start, end))
+        return merged
+
+    def _update_segment_from_drag(self, row: int, period: int) -> None:
+        segments = list(self._get_row_segments(row))
+        if not segments:
+            return
+        state = self._drag_state
+        if state is None:
+            return
+        idx = state.segment_index or 0
+        idx = max(0, min(idx, len(segments) - 1))
+        start, end = segments[idx]
+        if state.edge == "start":
+            new_start = min(period, end)
+            segments[idx] = (new_start, end)
+        else:
+            new_end = max(period, start)
+            segments[idx] = (start, new_end)
+        normalized = self._normalize_segments_list(segments)
+        self._set_row_segments(row, normalized)
+        updated_segments = self._get_row_segments(row)
+        for new_idx, (seg_start, seg_end) in enumerate(updated_segments):
+            if seg_start <= period <= seg_end:
+                state.segment_index = new_idx
+                break
+
     def _recolor_all_rows(self) -> None:
         for row in range(self.rowCount()):
             self._recolor_row(row)
@@ -340,28 +457,66 @@ class TaskTableWidget(QTableWidget):
             item.setBackground(QColor("white"))
         if row == self.blank_row_index or not draw_bars:
             return
-        start = self._read_optional_int(row, 1)
-        end = self._read_optional_int(row, 2)
-        if start is None or end is None:
+        segments = self._get_row_segments(row)
+        if not segments:
             return
         color = QColor("#1976d2")
         if self._is_work_package(row):
             color = QColor("#8d6e63")
-        for period in range(start, end + 1):
-            col = self.timeline_start_col + period - 1
-            if 0 <= col < self.columnCount():
-                item = self.item(row, col)
-                if item is None:
-                    item = self._make_cell(selectable=True)
-                    self.setItem(row, col, item)
-                item.setBackground(color)
+        for start, end in segments:
+            for period in range(start, end + 1):
+                col = self.timeline_start_col + period - 1
+                if 0 <= col < self.columnCount():
+                    item = self.item(row, col)
+                    if item is None:
+                        item = self._make_cell(selectable=True)
+                        self.setItem(row, col, item)
+                    item.setBackground(color)
 
     def _row_has_complete_dates(self, row: int) -> bool:
+        if self._get_row_segments(row):
+            return True
         return self._read_optional_int(row, 1) is not None and self._read_optional_int(row, 2) is not None
 
     def _is_work_package(self, row: int) -> bool:
         item = self.item(row, 0)
         return bool(item and item.data(Qt.ItemDataRole.UserRole))
+
+    def _period_is_active(self, row: int, period: int) -> bool:
+        segments = self._get_row_segments(row)
+        for start, end in segments:
+            if start <= period <= end:
+                return True
+        return False
+
+    def _split_task_at_period(self, row: int, period: int) -> None:
+        segments = self._get_row_segments(row)
+        if not segments:
+            start = self._read_optional_int(row, 1)
+            end = self._read_optional_int(row, 2)
+            if start is None or end is None or not (start <= period <= end):
+                return
+            segments = [(start, end)]
+        new_segments: List[tuple[int, int]] = []
+        for start, end in segments:
+            if period < start or period > end:
+                new_segments.append((start, end))
+                continue
+            if start == end:
+                continue
+            if period == start:
+                new_segments.append((start + 1, end))
+            elif period == end:
+                new_segments.append((start, end - 1))
+            else:
+                new_segments.append((start, period - 1))
+                new_segments.append((period + 1, end))
+        normalized = self._normalize_segments_list(new_segments)
+        if normalized != segments:
+            self._push_undo_state()
+            self._set_row_segments(row, normalized)
+            self._recolor_row(row)
+            self.tasks_updated.emit(self.get_tasks())
 
     def get_tasks(self) -> List[Task]:
         tasks: List[Task] = []
@@ -372,13 +527,19 @@ class TaskTableWidget(QTableWidget):
             name = name_item.text().strip() if name_item else ""
             start = self._read_optional_int(row, 1)
             end = self._read_optional_int(row, 2)
-            if not name and start is None and end is None:
+            segments = list(self._get_row_segments(row))
+            if not name and start is None and end is None and not segments:
                 continue
+            if not segments and start is not None and end is not None:
+                segments = [(start, end)]
+            derived_start = segments[0][0] if segments else start
+            derived_end = segments[-1][1] if segments else end
             task = Task(
                 name=name,
-                start=start,
-                end=end,
+                start=derived_start,
+                end=derived_end,
                 work_package=self._is_work_package(row),
+                segments=segments,
             )
             tasks.append(task)
         return tasks
@@ -394,8 +555,13 @@ class TaskTableWidget(QTableWidget):
                 item = self._make_cell(selectable=col >= self.timeline_start_col)
                 self.setItem(row, col, item)
             self.item(row, 0).setText(task.name)
-            self._write_optional_int(row, 1, task.start)
-            self._write_optional_int(row, 2, task.end)
+            segments = task.ensure_segments()
+            if segments:
+                self._set_row_segments(row, segments)
+            else:
+                self._set_row_segments(row, [])
+                self._write_optional_int(row, 1, task.start)
+                self._write_optional_int(row, 2, task.end)
             self.item(row, 0).setData(Qt.ItemDataRole.UserRole, task.work_package)
         self._append_blank_row()
         self._block_cell = False
@@ -418,7 +584,13 @@ class TaskTableWidget(QTableWidget):
     def _snapshot_tasks(self) -> List[Task]:
         """Capture a deep copy of the current tasks for undo purposes."""
         return [
-            Task(name=task.name, start=task.start, end=task.end, work_package=task.work_package)
+            Task(
+                name=task.name,
+                start=task.start,
+                end=task.end,
+                work_package=task.work_package,
+                segments=list(task.segments),
+            )
             for task in self.get_tasks()
         ]
 
@@ -445,21 +617,33 @@ class TaskTableWidget(QTableWidget):
             col = self.columnAt(int(event.position().x()))
             if row != self.blank_row_index and col >= self.timeline_start_col:
                 period = col - self.timeline_start_col + 1
-                start = self._read_int(row, 1)
-                end = self._read_int(row, 2)
-                if start and end:
-                    # Detect drags even if users grab near, but not exactly on, the edge.
+                segments = self._get_row_segments(row)
+                if segments:
                     pointer_x = int(event.position().x())
-                    start_edge = self._period_left_edge(start)
-                    end_edge = self._period_right_edge(end)
-                    if abs(pointer_x - start_edge) <= _DRAG_HANDLE_TOLERANCE:
-                        self._drag_state = DragState(row=row, edge="start")
-                    elif abs(pointer_x - end_edge) <= _DRAG_HANDLE_TOLERANCE:
-                        self._drag_state = DragState(row=row, edge="end")
-                    elif period == start:
-                        self._drag_state = DragState(row=row, edge="start")
-                    elif period == end:
-                        self._drag_state = DragState(row=row, edge="end")
+                    for idx, (seg_start, seg_end) in enumerate(segments):
+                        start_edge = self._period_left_edge(seg_start)
+                        end_edge = self._period_right_edge(seg_end)
+                        if abs(pointer_x - start_edge) <= _DRAG_HANDLE_TOLERANCE or period == seg_start:
+                            self._drag_state = DragState(row=row, edge="start", segment_index=idx)
+                            break
+                        if abs(pointer_x - end_edge) <= _DRAG_HANDLE_TOLERANCE or period == seg_end:
+                            self._drag_state = DragState(row=row, edge="end", segment_index=idx)
+                            break
+                else:
+                    start = self._read_int(row, 1)
+                    end = self._read_int(row, 2)
+                    if start and end:
+                        pointer_x = int(event.position().x())
+                        start_edge = self._period_left_edge(start)
+                        end_edge = self._period_right_edge(end)
+                        if abs(pointer_x - start_edge) <= _DRAG_HANDLE_TOLERANCE:
+                            self._drag_state = DragState(row=row, edge="start", segment_index=0)
+                        elif abs(pointer_x - end_edge) <= _DRAG_HANDLE_TOLERANCE:
+                            self._drag_state = DragState(row=row, edge="end", segment_index=0)
+                        elif period == start:
+                            self._drag_state = DragState(row=row, edge="start", segment_index=0)
+                        elif period == end:
+                            self._drag_state = DragState(row=row, edge="end", segment_index=0)
             if row >= 0 and row != self.blank_row_index and self._row_has_data(row):
                 self._dragged_task_index = self._row_to_task_index(row)
         super().mousePressEvent(event)
@@ -470,15 +654,19 @@ class TaskTableWidget(QTableWidget):
             if col >= self.timeline_start_col:
                 period = col - self.timeline_start_col + 1
                 period = max(1, min(period, self.duration))
-                if self._drag_state.edge == "start":
-                    end = self._read_int(self._drag_state.row, 2)
-                    if period <= end:
-                        self._write_int(self._drag_state.row, 1, period)
+                row = self._drag_state.row
+                if self._get_row_segments(row):
+                    self._update_segment_from_drag(row, period)
                 else:
-                    start = self._read_int(self._drag_state.row, 1)
-                    if period >= start:
-                        self._write_int(self._drag_state.row, 2, period)
-                self._recolor_row(self._drag_state.row)
+                    if self._drag_state.edge == "start":
+                        end = self._read_int(row, 2)
+                        if period <= end:
+                            self._write_int(row, 1, period)
+                    else:
+                        start = self._read_int(row, 1)
+                        if period >= start:
+                            self._write_int(row, 2, period)
+                self._recolor_row(row)
                 self.tasks_updated.emit(self.get_tasks())
             return
         super().mouseMoveEvent(event)
@@ -665,16 +853,24 @@ class MainWindow(QMainWindow):
         file_menu = menu.addMenu("File")
 
         new_action = QAction("New", self)
+        new_action.setShortcut(QKeySequence.StandardKey.New)
         new_action.triggered.connect(self.action_new)
         file_menu.addAction(new_action)
 
         open_action = QAction("Open", self)
+        open_action.setShortcut(QKeySequence.StandardKey.Open)
         open_action.triggered.connect(self.action_open)
         file_menu.addAction(open_action)
 
         save_action = QAction("Save", self)
+        save_action.setShortcut(QKeySequence.StandardKey.Save)
         save_action.triggered.connect(self.action_save)
         file_menu.addAction(save_action)
+
+        save_as_action = QAction("Save As...", self)
+        save_as_action.setShortcut(QKeySequence.StandardKey.SaveAs)
+        save_as_action.triggered.connect(self.action_save_as)
+        file_menu.addAction(save_as_action)
 
         export_action = QAction("Export", self)
         export_action.triggered.connect(self.action_export)
@@ -710,11 +906,11 @@ class MainWindow(QMainWindow):
         for task in tasks:
             if not task.has_schedule():
                 continue
-            assert task.start is not None and task.end is not None
-            start = max(1, min(task.start, self.table.duration))
-            end = max(1, min(task.end, self.table.duration))
-            for idx in range(start - 1, end):
-                counts[idx] += 1
+            for start, end in task.segments:
+                clamped_start = max(1, min(start, self.table.duration))
+                clamped_end = max(1, min(end, self.table.duration))
+                for idx in range(clamped_start - 1, clamped_end):
+                    counts[idx] += 1
         self.summary.set_duration(self.table.duration)
         self._mirror_all_column_widths()
         self.summary.update_counts(counts)
@@ -762,18 +958,20 @@ class MainWindow(QMainWindow):
     def action_save(self) -> None:
         """Persist the minimal CSV format used for reopening projects."""
         if not self.current_path:
-            path, _ = QFileDialog.getSaveFileName(
-                self,
-                "Save project",
-                filter="CSV Files (*.csv)",
-                initialFilter="CSV Files (*.csv)",
-            )
-            if not path:
+            path = self._prompt_save_destination()
+            if path is None:
                 return
-            self.current_path = Path(path)
-        tasks = self.table.get_tasks()
-        save_project(self.current_path, self.table.duration, tasks)
-        self.statusBar().showMessage(f"Saved to {self.current_path}", 3000)
+            self.current_path = path
+        self._save_to_path(self.current_path)
+
+    def action_save_as(self) -> None:
+        """Prompt for a new file name and save immediately."""
+        suggested = str(self.current_path) if self.current_path else ""
+        path = self._prompt_save_destination(directory=suggested)
+        if path is None:
+            return
+        self.current_path = path
+        self._save_to_path(path)
 
     def action_export(self) -> None:
         """Export the richer CSV/PDF formats used for sharing."""
@@ -837,6 +1035,21 @@ class MainWindow(QMainWindow):
         columns = min(self.summary.columnCount(), self.table.columnCount())
         for col in range(columns):
             self.summary.setColumnWidth(col, self.table.columnWidth(col))
+
+    def _prompt_save_destination(self, *, directory: str | None = None) -> Optional[Path]:
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save project",
+            directory or "",
+            filter="CSV Files (*.csv)",
+            initialFilter="CSV Files (*.csv)",
+        )
+        return Path(path) if path else None
+
+    def _save_to_path(self, path: Path) -> None:
+        tasks = self.table.get_tasks()
+        save_project(path, self.table.duration, tasks)
+        self.statusBar().showMessage(f"Saved to {path}", 3000)
 
     def closeEvent(self, event: QCloseEvent) -> None:  # pragma: no cover - requires UI
         """Ask for confirmation before closing the application."""

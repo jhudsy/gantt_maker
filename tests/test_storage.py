@@ -44,6 +44,39 @@ def test_save_project_writes_blank_cells_for_missing_dates(tmp_path: Path) -> No
 
     text = path.read_text().splitlines()
     assert text[0] == "#duration,4"
-    assert text[1] == "name,start,end,work_package"
-    assert text[2] == "Notes,,,0"
-    assert text[3] == "Rough start,2,,0"
+    assert text[1] == "name,start,end,work_package,intervals"
+    assert text[2] == "Notes,,,0,"
+    assert text[3] == "Rough start,2,,0,"
+
+
+def test_save_and_load_complex_task(tmp_path: Path) -> None:
+    path = tmp_path / "complex.csv"
+    tasks = [
+        Task(name="Phased", segments=[(3, 5), (8, 9), (12, 14)]),
+    ]
+
+    save_project(path, duration=16, tasks=tasks)
+    duration, loaded = load_project(path)
+
+    assert duration == 16
+    assert loaded == tasks
+
+
+def test_load_legacy_csv_without_intervals(tmp_path: Path) -> None:
+    path = tmp_path / "legacy.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "#duration,5",
+                "name,start,end,work_package",
+                "Legacy,1,3,0",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    duration, tasks = load_project(path)
+
+    assert duration == 5
+    assert tasks == [Task(name="Legacy", start=1, end=3, work_package=False)]

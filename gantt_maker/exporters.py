@@ -43,7 +43,7 @@ def export_as_csv(path: Path | str, duration: int, tasks: Iterable[Task]) -> Non
             row = [task.name, _format_optional_int(task.start), _format_optional_int(task.end)]
             markers = []
             for period in range(1, duration + 1):
-                if task.start is not None and task.end is not None and task.start <= period <= task.end:
+                if _task_active_during(task, period):
                     markers.append(CSV_WORK_MARKER if task.work_package else CSV_ACTIVE_MARKER)
                 else:
                     markers.append("")
@@ -175,11 +175,7 @@ def _draw_pdf_table(
             rect = QRectF(timeline_start_x + period * col_width, current_y, col_width, row_height)
             painter.drawRect(rect)
             timeline_period = period + 1
-            if (
-                task.start is not None
-                and task.end is not None
-                and task.start <= timeline_period <= task.end
-            ):
+            if _task_active_during(task, timeline_period):
                 painter.fillRect(rect.adjusted(1, 1, -1, -1), fill_color)
         current_y += row_height
 
@@ -191,3 +187,10 @@ def _draw_pdf_table(
 
 def _format_optional_int(value: Optional[int]) -> str:
     return "" if value is None else str(value)
+
+
+def _task_active_during(task: Task, period: int) -> bool:
+    for start, end in task.segments:
+        if start <= period <= end:
+            return True
+    return False

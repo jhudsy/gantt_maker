@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Tuple, Optional
 import csv
 
 from .models import Task
@@ -22,7 +22,12 @@ def save_project(path: Path | str, duration: int, tasks: Iterable[Task]) -> None
         writer.writerow([_DURATION_PREFIX, duration])
         writer.writerow(_TASK_HEADER)
         for task in tasks:
-            writer.writerow([task.name, task.start, task.end, int(task.work_package)])
+            writer.writerow([
+                task.name,
+                _serialize_optional_int(task.start),
+                _serialize_optional_int(task.end),
+                int(task.work_package),
+            ])
 
 
 def load_project(path: Path | str) -> Tuple[int, List[Task]]:
@@ -43,10 +48,26 @@ def load_project(path: Path | str) -> Tuple[int, List[Task]]:
         for row in reader:
             if len(row) < 4:
                 continue
-            name, start, end, work_package = row[:4]
-            if not name and not start and not end:
+            name, start_raw, end_raw, work_package = row[:4]
+            start = _parse_optional_int(start_raw)
+            end = _parse_optional_int(end_raw)
+            if not name and start is None and end is None:
                 continue
-            task = Task(name=name, start=int(start), end=int(end), work_package=bool(int(work_package)))
+            task = Task(name=name, start=start, end=end, work_package=bool(int(work_package)))
             tasks.append(task)
 
         return duration, tasks
+
+
+def _serialize_optional_int(value: Optional[int]) -> str:
+    return "" if value is None else str(value)
+
+
+def _parse_optional_int(value: str) -> Optional[int]:
+    text = value.strip() if value is not None else ""
+    if not text:
+        return None
+    try:
+        return int(text)
+    except ValueError:
+        return None

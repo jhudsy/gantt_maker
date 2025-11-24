@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtGui import QColor, QFont, QPageLayout, QPageSize, QPainter, QPen, QPdfWriter
@@ -40,10 +40,10 @@ def export_as_csv(path: Path | str, duration: int, tasks: Iterable[Task]) -> Non
         writer = csv.writer(handle)
         writer.writerow(header)
         for task in tasks:
-            row = [task.name, task.start, task.end]
+            row = [task.name, _format_optional_int(task.start), _format_optional_int(task.end)]
             markers = []
             for period in range(1, duration + 1):
-                if task.start <= period <= task.end:
+                if task.start is not None and task.end is not None and task.start <= period <= task.end:
                     markers.append(CSV_WORK_MARKER if task.work_package else CSV_ACTIVE_MARKER)
                 else:
                     markers.append("")
@@ -156,7 +156,10 @@ def _draw_pdf_table(
     for task in tasks:
         values = [task.name]
         if include_dates:
-            values.extend([str(task.start), str(task.end)])
+            values.extend([
+                _format_optional_int(task.start),
+                _format_optional_int(task.end),
+            ])
         for ( _title, width), x, value in zip(text_columns, column_positions, values):
             rect = QRectF(x, current_y, width, row_height)
             painter.drawRect(rect)
@@ -172,7 +175,11 @@ def _draw_pdf_table(
             rect = QRectF(timeline_start_x + period * col_width, current_y, col_width, row_height)
             painter.drawRect(rect)
             timeline_period = period + 1
-            if task.start <= timeline_period <= task.end:
+            if (
+                task.start is not None
+                and task.end is not None
+                and task.start <= timeline_period <= task.end
+            ):
                 painter.fillRect(rect.adjusted(1, 1, -1, -1), fill_color)
         current_y += row_height
 
@@ -180,3 +187,7 @@ def _draw_pdf_table(
         rect = QRectF(content_rect.left(), current_y, content_rect.width(), row_height)
         painter.drawRect(rect)
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "No tasks defined")
+
+
+def _format_optional_int(value: Optional[int]) -> str:
+    return "" if value is None else str(value)

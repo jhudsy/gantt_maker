@@ -15,6 +15,8 @@ The project itself can be best thought of as a table with 4 areas namely a textu
 
 Rows can be reordered directly in the UI: drag any populated row by its task cell (or row header) and drop it where the insertion guide appears. The blank append row is ignored during this process, undo snapshots are captured before the move, and the summary row automatically mirrors the new ordering.
 
+The grid happily stores "work in progress" rows. Users can type only a task name (or just a tentative start/end) and still save, reopen, export, or change the project duration without losing that partially filled data. Visual timelines, summary counts, and exported CSV/PDF files only light up periods when both start and end values are present, but the textual columns are always preserved.
+
 The visualisation area is itself a table with columns ranging from 1 to the project duration.
 
 The user can add new entries to the table (by either adding something at the bottom of a blank row) or right-clicking on an existing row and selecting "Insert row" which inserts a blank row *after* the current row.

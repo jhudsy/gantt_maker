@@ -269,24 +269,22 @@ class TaskTableWidget(QTableWidget):
 
     def _normalize_dates(self, row: int) -> None:
         """Clamp start/end inputs to the project duration and keep start <= end."""
-        has_start = self._cell_has_value(row, 1)
-        has_end = self._cell_has_value(row, 2)
-        if not has_start and not has_end:
+        start = self._read_optional_int(row, 1)
+        end = self._read_optional_int(row, 2)
+        if start is None and end is None:
             return
-        if has_start:
-            start = self._clamp_value(self._read_int(row, 1))
-            self._write_int(row, 1, start)
-        if has_end:
-            end = self._clamp_value(self._read_int(row, 2))
-            self._write_int(row, 2, end)
-        if not (has_start and has_end):
+        if start is not None:
+            start = self._clamp_value(start)
+            self._write_optional_int(row, 1, start)
+        if end is not None:
+            end = self._clamp_value(end)
+            self._write_optional_int(row, 2, end)
+        if start is None or end is None:
             return
-        start = self._read_int(row, 1)
-        end = self._read_int(row, 2)
         if start > end:
             start, end = end, start
-        self._write_int(row, 1, start)
-        self._write_int(row, 2, end)
+        self._write_optional_int(row, 1, start)
+        self._write_optional_int(row, 2, end)
 
     def _clamp_value(self, value: int) -> int:
         if value <= 0:
@@ -297,26 +295,36 @@ class TaskTableWidget(QTableWidget):
         item = self.item(row, col)
         return bool(item and item.text().strip())
 
-    def _read_int(self, row: int, col: int) -> int:
+    def _read_optional_int(self, row: int, col: int) -> Optional[int]:
         item = self.item(row, col)
         if not item:
-            return 0
+            return None
+        text = item.text().strip()
+        if not text:
+            return None
         try:
-            return int(item.text())
+            return int(text)
         except ValueError:
-            return 0
+            return None
 
-    def _write_int(self, row: int, col: int, value: int) -> None:
+    def _read_int(self, row: int, col: int) -> int:
+        value = self._read_optional_int(row, col)
+        return 0 if value is None else value
+
+    def _write_optional_int(self, row: int, col: int, value: Optional[int]) -> None:
         item = self.item(row, col)
         if item is None:
             item = QTableWidgetItem()
             self.setItem(row, col, item)
-        text_value = str(value)
+        text_value = "" if value is None else str(value)
         if item.text() == text_value:
             return
         self._block_cell = True
         item.setText(text_value)
         self._block_cell = False
+
+    def _write_int(self, row: int, col: int, value: int) -> None:
+        self._write_optional_int(row, col, value)
 
     def _recolor_all_rows(self) -> None:
         for row in range(self.rowCount()):
@@ -332,9 +340,9 @@ class TaskTableWidget(QTableWidget):
             item.setBackground(QColor("white"))
         if row == self.blank_row_index or not draw_bars:
             return
-        start = self._read_int(row, 1)
-        end = self._read_int(row, 2)
-        if not start or not end:
+        start = self._read_optional_int(row, 1)
+        end = self._read_optional_int(row, 2)
+        if start is None or end is None:
             return
         color = QColor("#1976d2")
         if self._is_work_package(row):
@@ -349,7 +357,7 @@ class TaskTableWidget(QTableWidget):
                 item.setBackground(color)
 
     def _row_has_complete_dates(self, row: int) -> bool:
-        return self._cell_has_value(row, 1) and self._cell_has_value(row, 2)
+        return self._read_optional_int(row, 1) is not None and self._read_optional_int(row, 2) is not None
 
     def _is_work_package(self, row: int) -> bool:
         item = self.item(row, 0)
@@ -361,14 +369,13 @@ class TaskTableWidget(QTableWidget):
             if row == self.blank_row_index:
                 continue
             name_item = self.item(row, 0)
-            start = self._read_int(row, 1)
-            end = self._read_int(row, 2)
-            if not name_item or not name_item.text().strip():
-                continue
-            if not start or not end:
+            name = name_item.text().strip() if name_item else ""
+            start = self._read_optional_int(row, 1)
+            end = self._read_optional_int(row, 2)
+            if not name and start is None and end is None:
                 continue
             task = Task(
-                name=name_item.text().strip(),
+                name=name,
                 start=start,
                 end=end,
                 work_package=self._is_work_package(row),
@@ -387,8 +394,8 @@ class TaskTableWidget(QTableWidget):
                 item = self._make_cell(selectable=col >= self.timeline_start_col)
                 self.setItem(row, col, item)
             self.item(row, 0).setText(task.name)
-            self.item(row, 1).setText(str(task.start))
-            self.item(row, 2).setText(str(task.end))
+            self._write_optional_int(row, 1, task.start)
+            self._write_optional_int(row, 2, task.end)
             self.item(row, 0).setData(Qt.ItemDataRole.UserRole, task.work_package)
         self._append_blank_row()
         self._block_cell = False
@@ -701,6 +708,9 @@ class MainWindow(QMainWindow):
         """Recalculate how many tasks overlap each period and mirror widths."""
         counts = [0] * self.table.duration
         for task in tasks:
+            if not task.has_schedule():
+                continue
+            assert task.start is not None and task.end is not None
             start = max(1, min(task.start, self.table.duration))
             end = max(1, min(task.end, self.table.duration))
             for idx in range(start - 1, end):

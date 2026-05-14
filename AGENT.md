@@ -28,7 +28,7 @@ The user can fill in a task name and the start and end dates and a bar appears i
 
 Tasks can be edited directly on the grid: drag the edges of any interval (or the entire bar) to lengthen, shorten, or reposition that segment while keeping the textual columns consistent. These interactions respect multi-interval tasks by only adjusting the dragged segment and automatically merging overlapping pieces.
 
-At the very bottom of the visualisation area is a summary. For each column it displays the number of tasks which exist at that point in time.
+At the very bottom of the visualisation area is a summary. For each column it displays the number of non-work-package tasks which exist at that point in time so master work packages do not inflate the totals, and it scrolls in lockstep with the main table so the counts always align with the same columns.
 
 Finally, the user can select a row as a "Work package" (again via right-clicking). These work packages are logical groups of tasks and should be highlighted appropriately when exported. The context menu displays the usual checkmark beside "Toggle work package" whenever the selected row is currently flagged, so it is always obvious whether the row is active. The user can also de-select a row as a workpackage if it was selected as one previously.
 

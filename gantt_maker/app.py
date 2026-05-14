@@ -260,13 +260,14 @@ class TaskTableWidget(QTableWidget):
             custom_diamond_cell = in_cell_menu.addAction("Custom...")
             color_actions[custom_diamond_cell] = ("diamond_cell_custom", period, None)
 
+            boundary_placement = self._boundary_placement_for_position(position, col)
             boundary_menu = diamonds_menu.addMenu("Set on boundary")
             for label, color_hex in _STANDARD_COLORS:
                 action = boundary_menu.addAction(label)
-                color_actions[action] = ("diamond_boundary", period, color_hex)
+                color_actions[action] = (f"diamond_{boundary_placement}", period, color_hex)
             boundary_menu.addSeparator()
             custom_diamond_boundary = boundary_menu.addAction("Custom...")
-            color_actions[custom_diamond_boundary] = ("diamond_boundary_custom", period, None)
+            color_actions[custom_diamond_boundary] = (f"diamond_{boundary_placement}_custom", period, None)
 
             diamonds_menu.addSeparator()
             remove_diamond_action = diamonds_menu.addAction("Remove diamond")
@@ -303,10 +304,14 @@ class TaskTableWidget(QTableWidget):
                 self._set_diamond_marker(row, period, "cell", color_hex)
             elif mode == "diamond_cell_custom" and period is not None:
                 self._pick_and_set_diamond_marker(row, period, "cell")
-            elif mode == "diamond_boundary" and period is not None and color_hex:
-                self._set_diamond_marker(row, period, "boundary", color_hex)
-            elif mode == "diamond_boundary_custom" and period is not None:
-                self._pick_and_set_diamond_marker(row, period, "boundary")
+            elif mode == "diamond_boundary_left" and period is not None and color_hex:
+                self._set_diamond_marker(row, period, "boundary-left", color_hex)
+            elif mode == "diamond_boundary_left_custom" and period is not None:
+                self._pick_and_set_diamond_marker(row, period, "boundary-left")
+            elif mode == "diamond_boundary_right" and period is not None and color_hex:
+                self._set_diamond_marker(row, period, "boundary-right", color_hex)
+            elif mode == "diamond_boundary_right_custom" and period is not None:
+                self._pick_and_set_diamond_marker(row, period, "boundary-right")
             elif mode == "diamond_remove" and period is not None:
                 self._remove_diamond_marker(row, period)
         elif action == insert_action:
@@ -596,7 +601,9 @@ class TaskTableWidget(QTableWidget):
                 continue
             placement = str(marker[0]).strip().lower()
             color = str(marker[1]).strip()
-            if placement not in {"cell", "boundary"} or not color:
+            if placement == "boundary":
+                placement = "boundary-right"
+            if placement not in {"cell", "boundary-left", "boundary-right"} or not color:
                 continue
             markers[key] = (placement, color)
         return markers
@@ -618,10 +625,20 @@ class TaskTableWidget(QTableWidget):
                 continue
             placement = str(marker[0]).strip().lower()
             color = str(marker[1]).strip()
-            if placement not in {"cell", "boundary"} or not color:
+            if placement == "boundary":
+                placement = "boundary-right"
+            if placement not in {"cell", "boundary-left", "boundary-right"} or not color:
                 continue
             normalized[key] = (placement, color)
         item.setData(_DIAMONDS_ROLE, normalized or None)
+
+    def _boundary_placement_for_position(self, position: QPoint, col: int) -> str:
+        left_edge = self.columnViewportPosition(col)
+        right_edge = left_edge + self.columnWidth(col)
+        click_x = position.x()
+        if abs(click_x - left_edge) <= abs(click_x - right_edge):
+            return "boundary-left"
+        return "boundary-right"
 
     def _set_cell_color(self, row: int, period: int, color_hex: str) -> None:
         colors = self._get_row_color_overrides(row)
@@ -739,7 +756,9 @@ class TaskTableWidget(QTableWidget):
                 if not marker_color.isValid():
                     marker_color = QColor("black")
                 item.setText(_DIAMOND_SYMBOL)
-                if placement == "boundary":
+                if placement == "boundary-left":
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+                elif placement == "boundary-right":
                     item.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
                 else:
                     item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)

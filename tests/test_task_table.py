@@ -1,4 +1,4 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtWidgets import QApplication
 
 from gantt_maker.app import TaskTableWidget, MainWindow
@@ -194,7 +194,7 @@ def test_diamond_marker_roundtrip_and_rendering(qapp: QApplication) -> None:
 
     tasks = table.get_tasks()
     assert tasks[0].diamond_markers[3] == ("cell", "#ff0000")
-    assert tasks[0].diamond_markers[4] == ("boundary", "#00ff00")
+    assert tasks[0].diamond_markers[4] == ("boundary-right", "#00ff00")
 
     cell_item = table.item(0, table.timeline_start_col + 2)
     boundary_item = table.item(0, table.timeline_start_col + 3)
@@ -211,3 +211,25 @@ def test_diamond_marker_roundtrip_and_rendering(qapp: QApplication) -> None:
     table.set_tasks(tasks)
     reloaded = table.get_tasks()
     assert reloaded[0].diamond_markers == tasks[0].diamond_markers
+
+
+def test_boundary_diamond_snaps_to_nearest_edge(qapp: QApplication) -> None:
+    table = TaskTableWidget(6)
+    table.set_tasks([Task(name="Milestone", start=2, end=5)])
+
+    col = table.timeline_start_col + 2
+    left_edge = table.columnViewportPosition(col)
+    right_edge = left_edge + table.columnWidth(col)
+
+    assert table._boundary_placement_for_position(QPoint(left_edge + 1, 0), col) == "boundary-left"
+    assert table._boundary_placement_for_position(QPoint(right_edge - 1, 0), col) == "boundary-right"
+
+    table._set_diamond_marker(0, 3, "boundary-left", "#ff0000")
+    table._set_diamond_marker(0, 4, "boundary-right", "#00ff00")
+
+    left_item = table.item(0, col)
+    right_item = table.item(0, col + 1)
+    assert left_item is not None
+    assert right_item is not None
+    assert left_item.textAlignment() & Qt.AlignmentFlag.AlignLeft
+    assert right_item.textAlignment() & Qt.AlignmentFlag.AlignRight

@@ -46,7 +46,10 @@ To change the project duration after tasks already exist, select **File → Chan
 - **File → Export → CSV** writes a rich matrix that mirrors the PDF (Task/Start/End columns followed by one column per period populated with `X` or `W`). This is distinct from **Save**, which stores the minimal CSV needed to reopen a project.
 
 ### Save format compatibility
-- **Save** now stores interval data, cell colors, and diamond markers so UI styling reopens exactly as edited.
+- **Save** now stores interval data, row color, cell colors, and diamond markers so UI styling reopens exactly as edited.
+- The current save header is `name,start,end,work_package,row_color,intervals,cell_colors,diamond_markers`.
+- `cell_colors` is encoded as `period:#rrggbb;period:#rrggbb` for per-period overrides.
+- `diamond_markers` is encoded as `period|placement|#rrggbb;...`, where `placement` is `cell`, `boundary-left`, or `boundary-right`.
 - Existing saved files from earlier versions still load (legacy headers are supported).
 
 The main window now opens wide enough to show the default 20-period timeline, so horizontal scrolling is rarely necessary for small projects.

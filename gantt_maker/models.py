@@ -133,7 +133,9 @@ class Task:
                 continue
             placement = str(marker[0]).strip().lower()
             color = str(marker[1]).strip()
-            if placement not in {"cell", "boundary"} or not color:
+            if placement == "boundary":
+                placement = "boundary-right"
+            if placement not in {"cell", "boundary-left", "boundary-right"} or not color:
                 continue
             normalized[key] = (placement, color)
         self.diamond_markers = normalized

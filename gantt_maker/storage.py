@@ -207,7 +207,9 @@ def _serialize_diamond_markers(diamond_markers: dict[int, tuple[str, str]]) -> s
             continue
         placement = str(marker[0]).strip().lower()
         color = str(marker[1]).strip()
-        if placement not in {"cell", "boundary"} or not color:
+        if placement == "boundary":
+            placement = "boundary-right"
+        if placement not in {"cell", "boundary-left", "boundary-right"} or not color:
             continue
         parts.append(f"{period}|{placement}|{color}")
     return ";".join(parts)
@@ -229,7 +231,9 @@ def _deserialize_diamond_markers(value: str) -> dict[int, tuple[str, str]]:
             continue
         placement = placement_raw.strip().lower()
         color = color_raw.strip()
-        if period <= 0 or placement not in {"cell", "boundary"} or not color:
+        if placement == "boundary":
+            placement = "boundary-right"
+        if period <= 0 or placement not in {"cell", "boundary-left", "boundary-right"} or not color:
             continue
         markers[period] = (placement, color)
     return markers

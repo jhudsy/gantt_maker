@@ -36,6 +36,8 @@ You can also pass a CSV path directly (e.g., `python -m gantt_maker my_project.c
 
 Use the File menu to create a new project (you will be prompted for the duration), open existing CSV files, save progress, or export to CSV/PDF. Right-click rows inside the table to insert new rows, toggle work-package highlighting, and set row colors. Right-click timeline cells to set or clear individual cell colors and to add/remove diamonds with palette or custom colors.
 
+Row color applies only to the task's active periods, not to empty timeline cells. Clearing an individual cell color restores the active-period color if one exists, or white if it does not.
+
 ### Adjusting the duration
 To change the project duration after tasks already exist, select **File → Change Duration...** and enter the new number of periods. Tasks will be clamped automatically if they exceed the new bounds.
 

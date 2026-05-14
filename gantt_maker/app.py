@@ -37,6 +37,7 @@ _DRAG_HANDLE_TOLERANCE = 6
 _SEGMENTS_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 _CELL_COLORS_ROLE = int(Qt.ItemDataRole.UserRole) + 2
 _DIAMONDS_ROLE = int(Qt.ItemDataRole.UserRole) + 3
+_ROW_COLOR_ROLE = int(Qt.ItemDataRole.UserRole) + 4
 _DIAMOND_SYMBOL = "◆"
 _STANDARD_COLORS: list[tuple[str, str]] = [
     ("Red", "#e53935"),
@@ -562,6 +563,22 @@ class TaskTableWidget(QTableWidget):
             normalized[key] = value
         item.setData(_CELL_COLORS_ROLE, normalized or None)
 
+    def _get_row_color(self, row: int) -> Optional[str]:
+        item = self.item(row, 0)
+        stored = item.data(_ROW_COLOR_ROLE) if item else None
+        if not isinstance(stored, str):
+            return None
+        color = stored.strip()
+        return color or None
+
+    def _set_row_color_value(self, row: int, color_hex: Optional[str]) -> None:
+        item = self.item(row, 0)
+        if item is None:
+            item = QTableWidgetItem("")
+            self.setItem(row, 0, item)
+        value = None if color_hex is None else str(color_hex).strip() or None
+        item.setData(_ROW_COLOR_ROLE, value)
+
     def _get_row_diamond_markers(self, row: int) -> dict[int, tuple[str, str]]:
         item = self.item(row, 0)
         stored = item.data(_DIAMONDS_ROLE) if item else None
@@ -630,8 +647,7 @@ class TaskTableWidget(QTableWidget):
 
     def _set_row_color(self, row: int, color_hex: str) -> None:
         color_name = QColor(color_hex).name()
-        overrides = {period: color_name for period in range(1, self.duration + 1)}
-        self._set_row_color_overrides(row, overrides)
+        self._set_row_color_value(row, color_name)
         self._recolor_row(row)
         self.tasks_updated.emit(self.get_tasks())
 
@@ -642,12 +658,26 @@ class TaskTableWidget(QTableWidget):
         self._set_row_color(row, selected.name())
 
     def _clear_row_colors(self, row: int) -> None:
-        colors = self._get_row_color_overrides(row)
-        if not colors:
+        if self._get_row_color(row) is None:
             return
-        self._set_row_color_overrides(row, {})
+        self._set_row_color_value(row, None)
         self._recolor_row(row)
         self.tasks_updated.emit(self.get_tasks())
+
+    def _get_active_periods(self, row: int) -> List[int]:
+        segments = self._get_row_segments(row)
+        periods: List[int] = []
+        for start, end in segments:
+            periods.extend(range(start, end + 1))
+        if periods:
+            return periods
+        start = self._read_optional_int(row, 1)
+        end = self._read_optional_int(row, 2)
+        if start is None or end is None:
+            return []
+        if start > end:
+            start, end = end, start
+        return list(range(start, end + 1))
 
     def _set_diamond_marker(self, row: int, period: int, placement: str, color_hex: str) -> None:
         markers = self._get_row_diamond_markers(row)
@@ -680,8 +710,10 @@ class TaskTableWidget(QTableWidget):
         default_bar_color = QColor("#1976d2")
         if self._is_work_package(row):
             default_bar_color = QColor("#8d6e63")
+        row_color = self._get_row_color(row)
         segments = self._get_row_segments(row) if draw_bars and row != self.blank_row_index else []
         overrides = self._get_row_color_overrides(row)
+        active_periods = set(self._get_active_periods(row))
         diamonds = self._get_row_diamond_markers(row)
         for col in range(self.timeline_start_col, self.columnCount()):
             item = self.item(row, col)
@@ -690,10 +722,8 @@ class TaskTableWidget(QTableWidget):
                 self.setItem(row, col, item)
             period = col - self.timeline_start_col + 1
             background = QColor("white")
-            for start, end in segments:
-                if start <= period <= end:
-                    background = default_bar_color
-                    break
+            if period in active_periods:
+                background = QColor(row_color) if row_color else default_bar_color
             if period in overrides:
                 override_color = QColor(overrides[period])
                 if override_color.isValid():
@@ -770,9 +800,10 @@ class TaskTableWidget(QTableWidget):
             start = self._read_optional_int(row, 1)
             end = self._read_optional_int(row, 2)
             segments = list(self._get_row_segments(row))
+            row_color = self._get_row_color(row)
             row_colors = self._get_row_color_overrides(row)
             row_diamonds = self._get_row_diamond_markers(row)
-            if not name and start is None and end is None and not segments and not row_colors and not row_diamonds:
+            if not name and start is None and end is None and not segments and not row_color and not row_colors and not row_diamonds:
                 continue
             if not segments and start is not None and end is not None:
                 segments = [(start, end)]
@@ -783,6 +814,7 @@ class TaskTableWidget(QTableWidget):
                 start=derived_start,
                 end=derived_end,
                 work_package=self._is_work_package(row),
+                row_color=row_color,
                 segments=segments,
                 cell_colors=row_colors,
                 diamond_markers=row_diamonds,
@@ -809,6 +841,7 @@ class TaskTableWidget(QTableWidget):
                 self._write_optional_int(row, 1, task.start)
                 self._write_optional_int(row, 2, task.end)
             self.item(row, 0).setData(Qt.ItemDataRole.UserRole, task.work_package)
+            self._set_row_color_value(row, task.row_color)
             self._set_row_color_overrides(row, task.cell_colors)
             self._set_row_diamond_markers(row, task.diamond_markers)
         self._append_blank_row()
@@ -837,6 +870,7 @@ class TaskTableWidget(QTableWidget):
                 start=task.start,
                 end=task.end,
                 work_package=task.work_package,
+                row_color=task.row_color,
                 segments=list(task.segments),
                 cell_colors=dict(task.cell_colors),
                 diamond_markers=dict(task.diamond_markers),

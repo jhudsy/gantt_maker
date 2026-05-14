@@ -12,6 +12,7 @@ def _snapshot(tasks):
             start=t.start,
             end=t.end,
             work_package=t.work_package,
+            row_color=t.row_color,
             segments=list(t.segments),
             cell_colors=dict(t.cell_colors),
             diamond_markers=dict(t.diamond_markers),
@@ -132,18 +133,56 @@ def test_cell_and_row_color_overrides_roundtrip(qapp: QApplication) -> None:
     table = TaskTableWidget(6)
     table.set_tasks([Task(name="Color", start=2, end=4)])
 
-    table._set_cell_color(0, 2, "#ff0000")
     table._set_row_color(0, "#00ff00")
+    table._set_cell_color(0, 3, "#ff0000")
     table._set_cell_color(0, 5, "#0000ff")
 
     tasks = table.get_tasks()
-    assert tasks[0].cell_colors[2] == "#00ff00"
-    assert tasks[0].cell_colors[4] == "#00ff00"
+    assert tasks[0].row_color == "#00ff00"
     assert tasks[0].cell_colors[5] == "#0000ff"
+
+    active_item = table.item(0, table.timeline_start_col + 1)
+    assert active_item is not None
+    assert active_item.background().color().name() == "#00ff00"
+
+    overridden_item = table.item(0, table.timeline_start_col + 2)
+    assert overridden_item is not None
+    assert overridden_item.background().color().name() == "#ff0000"
+
+    inactive_item = table.item(0, table.timeline_start_col + 4)
+    assert inactive_item is not None
+    assert inactive_item.background().color().name() == "#0000ff"
+
+    untouched_inactive_item = table.item(0, table.timeline_start_col + 5)
+    assert untouched_inactive_item is not None
+    assert untouched_inactive_item.background().color().name() == "#ffffff"
 
     table.set_tasks(tasks)
     reloaded = table.get_tasks()
     assert reloaded[0].cell_colors == tasks[0].cell_colors
+    assert reloaded[0].row_color == tasks[0].row_color
+
+
+def test_clear_cell_color_reverts_to_active_default(qapp: QApplication) -> None:
+    table = TaskTableWidget(6)
+    table.set_tasks([Task(name="Color", start=2, end=4)])
+
+    table._set_row_color(0, "#00ff00")
+    table._set_cell_color(0, 3, "#ff0000")
+
+    colored_item = table.item(0, table.timeline_start_col + 2)
+    assert colored_item is not None
+    assert colored_item.background().color().name() == "#ff0000"
+
+    table._clear_cell_color(0, 3)
+
+    reverted_item = table.item(0, table.timeline_start_col + 2)
+    assert reverted_item is not None
+    assert reverted_item.background().color().name() == "#00ff00"
+
+    inactive_item = table.item(0, table.timeline_start_col + 5)
+    assert inactive_item is not None
+    assert inactive_item.background().color().name() == "#ffffff"
 
 
 def test_diamond_marker_roundtrip_and_rendering(qapp: QApplication) -> None:

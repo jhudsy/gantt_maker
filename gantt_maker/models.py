@@ -16,12 +16,14 @@ class Task:
     start: Optional[int] = None
     end: Optional[int] = None
     work_package: bool = False
+    row_color: Optional[str] = None
     segments: List[Interval] = field(default_factory=list)
     cell_colors: Dict[int, str] = field(default_factory=dict)
     diamond_markers: Dict[int, Tuple[str, str]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.ensure_segments()
+        self.normalize_row_color()
         self.normalize_cell_colors()
         self.normalize_diamond_markers()
 
@@ -57,6 +59,8 @@ class Task:
                 for period, color in self.cell_colors.items()
                 if 1 <= period <= duration and color
             }
+        if self.row_color:
+            self.row_color = self.row_color.strip() or None
         if self.diamond_markers:
             self.diamond_markers = {
                 period: marker
@@ -78,6 +82,7 @@ class Task:
             and self.start is None
             and self.end is None
             and not self.segments
+            and not self.row_color
             and not self.cell_colors
             and not self.diamond_markers
         )
@@ -107,6 +112,13 @@ class Task:
             normalized[key] = value
         self.cell_colors = normalized
         return dict(self.cell_colors)
+
+    def normalize_row_color(self) -> Optional[str]:
+        if self.row_color is None:
+            return None
+        text = str(self.row_color).strip()
+        self.row_color = text or None
+        return self.row_color
 
     def normalize_diamond_markers(self) -> Dict[int, Tuple[str, str]]:
         normalized: Dict[int, Tuple[str, str]] = {}

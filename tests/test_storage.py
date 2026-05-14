@@ -44,9 +44,9 @@ def test_save_project_writes_blank_cells_for_missing_dates(tmp_path: Path) -> No
 
     text = path.read_text().splitlines()
     assert text[0] == "#duration,4"
-    assert text[1] == "name,start,end,work_package,intervals,cell_colors,diamond_markers"
-    assert text[2] == "Notes,,,0,,,"
-    assert text[3] == "Rough start,2,,0,,,"
+    assert text[1] == "name,start,end,work_package,row_color,intervals,cell_colors,diamond_markers"
+    assert text[2] == "Notes,,,0,,,,"
+    assert text[3] == "Rough start,2,,0,,,,"
 
 
 def test_save_and_load_complex_task(tmp_path: Path) -> None:
@@ -87,6 +87,17 @@ def test_save_and_load_with_cell_colors(tmp_path: Path) -> None:
     tasks = [
         Task(name="Colored", start=1, end=3, cell_colors={1: "#ff0000", 3: "#00ff00"}),
     ]
+
+    save_project(path, duration=6, tasks=tasks)
+    duration, loaded = load_project(path)
+
+    assert duration == 6
+    assert loaded == tasks
+
+
+def test_save_and_load_with_row_color(tmp_path: Path) -> None:
+    path = tmp_path / "row_color.csv"
+    tasks = [Task(name="Colored", start=1, end=3, row_color="#112233")]
 
     save_project(path, duration=6, tasks=tasks)
     duration, loaded = load_project(path)

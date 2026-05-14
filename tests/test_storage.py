@@ -44,9 +44,9 @@ def test_save_project_writes_blank_cells_for_missing_dates(tmp_path: Path) -> No
 
     text = path.read_text().splitlines()
     assert text[0] == "#duration,4"
-    assert text[1] == "name,start,end,work_package,intervals"
-    assert text[2] == "Notes,,,0,"
-    assert text[3] == "Rough start,2,,0,"
+    assert text[1] == "name,start,end,work_package,intervals,cell_colors,diamond_markers"
+    assert text[2] == "Notes,,,0,,,"
+    assert text[3] == "Rough start,2,,0,,,"
 
 
 def test_save_and_load_complex_task(tmp_path: Path) -> None:
@@ -80,3 +80,83 @@ def test_load_legacy_csv_without_intervals(tmp_path: Path) -> None:
 
     assert duration == 5
     assert tasks == [Task(name="Legacy", start=1, end=3, work_package=False)]
+
+
+def test_save_and_load_with_cell_colors(tmp_path: Path) -> None:
+    path = tmp_path / "colors.csv"
+    tasks = [
+        Task(name="Colored", start=1, end=3, cell_colors={1: "#ff0000", 3: "#00ff00"}),
+    ]
+
+    save_project(path, duration=6, tasks=tasks)
+    duration, loaded = load_project(path)
+
+    assert duration == 6
+    assert loaded == tasks
+
+
+def test_load_pre_color_csv_with_intervals(tmp_path: Path) -> None:
+    path = tmp_path / "pre_color.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "#duration,6",
+                "name,start,end,work_package,intervals",
+                "Phased,1,5,0,1-2;4-5",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    duration, tasks = load_project(path)
+
+    assert duration == 6
+    assert tasks == [Task(name="Phased", start=1, end=5, work_package=False, segments=[(1, 2), (4, 5)])]
+
+
+def test_save_and_load_with_diamonds(tmp_path: Path) -> None:
+    path = tmp_path / "diamonds.csv"
+    tasks = [
+        Task(
+            name="Milestones",
+            start=1,
+            end=4,
+            diamond_markers={2: ("cell", "#ff0000"), 4: ("boundary", "#00ff00")},
+        ),
+    ]
+
+    save_project(path, duration=8, tasks=tasks)
+    duration, loaded = load_project(path)
+
+    assert duration == 8
+    assert loaded == tasks
+
+
+def test_load_pre_diamond_header(tmp_path: Path) -> None:
+    path = tmp_path / "pre_diamond.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "#duration,6",
+                "name,start,end,work_package,intervals,cell_colors",
+                "Phased,1,5,0,1-2;4-5,1:#ff0000;3:#00ff00",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    duration, tasks = load_project(path)
+
+    assert duration == 6
+    assert tasks == [
+        Task(
+            name="Phased",
+            start=1,
+            end=5,
+            work_package=False,
+            segments=[(1, 2), (4, 5)],
+            cell_colors={1: "#ff0000", 3: "#00ff00"},
+        )
+    ]

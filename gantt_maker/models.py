@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 
 Interval = Tuple[int, int]
@@ -17,9 +17,13 @@ class Task:
     end: Optional[int] = None
     work_package: bool = False
     segments: List[Interval] = field(default_factory=list)
+    cell_colors: Dict[int, str] = field(default_factory=dict)
+    diamond_markers: Dict[int, Tuple[str, str]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.ensure_segments()
+        self.normalize_cell_colors()
+        self.normalize_diamond_markers()
 
     def clamp_to_duration(self, duration: int) -> None:
         """Ensure the task stays within the provided duration bounds."""
@@ -47,6 +51,18 @@ class Task:
                 self.start = max(1, min(self.start, duration))
             if self.end is not None:
                 self.end = max(1, min(self.end, duration))
+        if self.cell_colors:
+            self.cell_colors = {
+                period: color
+                for period, color in self.cell_colors.items()
+                if 1 <= period <= duration and color
+            }
+        if self.diamond_markers:
+            self.diamond_markers = {
+                period: marker
+                for period, marker in self.diamond_markers.items()
+                if 1 <= period <= duration and marker
+            }
 
     def has_schedule(self) -> bool:
         """Return True when the task has at least one interval."""
@@ -57,7 +73,14 @@ class Task:
 
     def is_empty(self) -> bool:
         """Return True when the task carries no semantic data."""
-        return not self.name and self.start is None and self.end is None and not self.segments
+        return (
+            not self.name
+            and self.start is None
+            and self.end is None
+            and not self.segments
+            and not self.cell_colors
+            and not self.diamond_markers
+        )
 
     def ensure_segments(self) -> List[Interval]:
         if self.segments:
@@ -70,6 +93,39 @@ class Task:
             self.start = self.segments[0][0]
             self.end = self.segments[-1][1]
         return list(self.segments)
+
+    def normalize_cell_colors(self) -> Dict[int, str]:
+        normalized: Dict[int, str] = {}
+        for period, color in self.cell_colors.items():
+            try:
+                key = int(period)
+            except (TypeError, ValueError):
+                continue
+            value = str(color).strip()
+            if key <= 0 or not value:
+                continue
+            normalized[key] = value
+        self.cell_colors = normalized
+        return dict(self.cell_colors)
+
+    def normalize_diamond_markers(self) -> Dict[int, Tuple[str, str]]:
+        normalized: Dict[int, Tuple[str, str]] = {}
+        for period, marker in self.diamond_markers.items():
+            try:
+                key = int(period)
+            except (TypeError, ValueError):
+                continue
+            if key <= 0:
+                continue
+            if not isinstance(marker, (tuple, list)) or len(marker) != 2:
+                continue
+            placement = str(marker[0]).strip().lower()
+            color = str(marker[1]).strip()
+            if placement not in {"cell", "boundary"} or not color:
+                continue
+            normalized[key] = (placement, color)
+        self.diamond_markers = normalized
+        return dict(self.diamond_markers)
 
     @staticmethod
     def _normalize_segments(segments: Sequence[Interval]) -> List[Interval]:

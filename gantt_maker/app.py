@@ -4,7 +4,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QItemSelectionModel, QMimeData
 from PyQt6.QtGui import QAction, QColor, QCloseEvent, QKeySequence
@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QAbstractItemView,
     QHeaderView,
+    QColorDialog,
 )
 
 from .exporters import export_as_csv, export_as_pdf
@@ -34,6 +35,20 @@ _DEFAULT_DURATION = 20
 _UNDO_STACK_LIMIT = 20
 _DRAG_HANDLE_TOLERANCE = 6
 _SEGMENTS_ROLE = int(Qt.ItemDataRole.UserRole) + 1
+_CELL_COLORS_ROLE = int(Qt.ItemDataRole.UserRole) + 2
+_DIAMONDS_ROLE = int(Qt.ItemDataRole.UserRole) + 3
+_DIAMOND_SYMBOL = "◆"
+_STANDARD_COLORS: list[tuple[str, str]] = [
+    ("Red", "#e53935"),
+    ("Orange", "#fb8c00"),
+    ("Amber", "#fbc02d"),
+    ("Green", "#43a047"),
+    ("Teal", "#00897b"),
+    ("Blue", "#1e88e5"),
+    ("Indigo", "#3949ab"),
+    ("Brown", "#8d6e63"),
+    ("Gray", "#757575"),
+]
 
 
 @dataclass(slots=True)
@@ -51,6 +66,8 @@ class SummaryRowWidget(QTableWidget):
         self.timeline_start_col = len(TASK_HEADERS)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.verticalHeader().setVisible(False)
         self.horizontalHeader().setVisible(False)
         self.setMaximumHeight(48)
@@ -220,10 +237,78 @@ class TaskTableWidget(QTableWidget):
             if self._period_is_active(row, period):
                 split_action = menu.addAction(f"Split at period {period}")
         menu.addSeparator()
+        color_actions: dict[QAction, tuple[str, Optional[int], Optional[str]]] = {}
+        if col >= self.timeline_start_col:
+            period = col - self.timeline_start_col + 1
+            cell_menu = menu.addMenu("Set cell color")
+            for label, color_hex in _STANDARD_COLORS:
+                action = cell_menu.addAction(label)
+                color_actions[action] = ("cell", period, color_hex)
+            cell_menu.addSeparator()
+            custom_cell_action = cell_menu.addAction("Custom...")
+            color_actions[custom_cell_action] = ("cell_custom", period, None)
+            clear_cell_action = menu.addAction("Clear cell color")
+            color_actions[clear_cell_action] = ("cell_clear", period, None)
+
+            diamonds_menu = menu.addMenu("Diamonds")
+            in_cell_menu = diamonds_menu.addMenu("Set in cell")
+            for label, color_hex in _STANDARD_COLORS:
+                action = in_cell_menu.addAction(label)
+                color_actions[action] = ("diamond_cell", period, color_hex)
+            in_cell_menu.addSeparator()
+            custom_diamond_cell = in_cell_menu.addAction("Custom...")
+            color_actions[custom_diamond_cell] = ("diamond_cell_custom", period, None)
+
+            boundary_menu = diamonds_menu.addMenu("Set on boundary")
+            for label, color_hex in _STANDARD_COLORS:
+                action = boundary_menu.addAction(label)
+                color_actions[action] = ("diamond_boundary", period, color_hex)
+            boundary_menu.addSeparator()
+            custom_diamond_boundary = boundary_menu.addAction("Custom...")
+            color_actions[custom_diamond_boundary] = ("diamond_boundary_custom", period, None)
+
+            diamonds_menu.addSeparator()
+            remove_diamond_action = diamonds_menu.addAction("Remove diamond")
+            color_actions[remove_diamond_action] = ("diamond_remove", period, None)
+
+        row_menu = menu.addMenu("Set row color")
+        for label, color_hex in _STANDARD_COLORS:
+            action = row_menu.addAction(label)
+            color_actions[action] = ("row", None, color_hex)
+        row_menu.addSeparator()
+        custom_row_action = row_menu.addAction("Custom...")
+        color_actions[custom_row_action] = ("row_custom", None, None)
+        clear_row_action = menu.addAction("Clear row color")
+        color_actions[clear_row_action] = ("row_clear", None, None)
+        menu.addSeparator()
         undo_action = menu.addAction("Undo delete")
         undo_action.setEnabled(bool(self._undo_stack))
         action = menu.exec(self.viewport().mapToGlobal(position))
-        if action == insert_action:
+        if action in color_actions:
+            mode, period, color_hex = color_actions[action]
+            if mode == "cell" and period is not None and color_hex:
+                self._set_cell_color(row, period, color_hex)
+            elif mode == "cell_custom" and period is not None:
+                self._pick_and_set_cell_color(row, period)
+            elif mode == "cell_clear" and period is not None:
+                self._clear_cell_color(row, period)
+            elif mode == "row" and color_hex:
+                self._set_row_color(row, color_hex)
+            elif mode == "row_custom":
+                self._pick_and_set_row_color(row)
+            elif mode == "row_clear":
+                self._clear_row_colors(row)
+            elif mode == "diamond_cell" and period is not None and color_hex:
+                self._set_diamond_marker(row, period, "cell", color_hex)
+            elif mode == "diamond_cell_custom" and period is not None:
+                self._pick_and_set_diamond_marker(row, period, "cell")
+            elif mode == "diamond_boundary" and period is not None and color_hex:
+                self._set_diamond_marker(row, period, "boundary", color_hex)
+            elif mode == "diamond_boundary_custom" and period is not None:
+                self._pick_and_set_diamond_marker(row, period, "boundary")
+            elif mode == "diamond_remove" and period is not None:
+                self._remove_diamond_marker(row, period)
+        elif action == insert_action:
             self._insert_row_after(row)
         elif action == toggle_action:
             self._toggle_work_package(row)
@@ -443,35 +528,192 @@ class TaskTableWidget(QTableWidget):
                 state.segment_index = new_idx
                 break
 
+    def _get_row_color_overrides(self, row: int) -> dict[int, str]:
+        item = self.item(row, 0)
+        stored = item.data(_CELL_COLORS_ROLE) if item else None
+        if not isinstance(stored, dict):
+            return {}
+        colors: dict[int, str] = {}
+        for period, value in stored.items():
+            try:
+                key = int(period)
+            except (TypeError, ValueError):
+                continue
+            color = str(value).strip()
+            if key <= 0 or not color:
+                continue
+            colors[key] = color
+        return colors
+
+    def _set_row_color_overrides(self, row: int, color_overrides: dict[int, str]) -> None:
+        item = self.item(row, 0)
+        if item is None:
+            item = QTableWidgetItem("")
+            self.setItem(row, 0, item)
+        normalized: dict[int, str] = {}
+        for period, color in color_overrides.items():
+            try:
+                key = int(period)
+            except (TypeError, ValueError):
+                continue
+            value = str(color).strip()
+            if key <= 0 or not value:
+                continue
+            normalized[key] = value
+        item.setData(_CELL_COLORS_ROLE, normalized or None)
+
+    def _get_row_diamond_markers(self, row: int) -> dict[int, tuple[str, str]]:
+        item = self.item(row, 0)
+        stored = item.data(_DIAMONDS_ROLE) if item else None
+        if not isinstance(stored, dict):
+            return {}
+        markers: dict[int, tuple[str, str]] = {}
+        for period, marker in stored.items():
+            try:
+                key = int(period)
+            except (TypeError, ValueError):
+                continue
+            if key <= 0:
+                continue
+            if not isinstance(marker, (tuple, list)) or len(marker) != 2:
+                continue
+            placement = str(marker[0]).strip().lower()
+            color = str(marker[1]).strip()
+            if placement not in {"cell", "boundary"} or not color:
+                continue
+            markers[key] = (placement, color)
+        return markers
+
+    def _set_row_diamond_markers(self, row: int, markers: dict[int, tuple[str, str]]) -> None:
+        item = self.item(row, 0)
+        if item is None:
+            item = QTableWidgetItem("")
+            self.setItem(row, 0, item)
+        normalized: dict[int, tuple[str, str]] = {}
+        for period, marker in markers.items():
+            try:
+                key = int(period)
+            except (TypeError, ValueError):
+                continue
+            if key <= 0:
+                continue
+            if not isinstance(marker, (tuple, list)) or len(marker) != 2:
+                continue
+            placement = str(marker[0]).strip().lower()
+            color = str(marker[1]).strip()
+            if placement not in {"cell", "boundary"} or not color:
+                continue
+            normalized[key] = (placement, color)
+        item.setData(_DIAMONDS_ROLE, normalized or None)
+
+    def _set_cell_color(self, row: int, period: int, color_hex: str) -> None:
+        colors = self._get_row_color_overrides(row)
+        colors[period] = QColor(color_hex).name()
+        self._set_row_color_overrides(row, colors)
+        self._recolor_row(row)
+        self.tasks_updated.emit(self.get_tasks())
+
+    def _pick_and_set_cell_color(self, row: int, period: int) -> None:
+        selected = QColorDialog.getColor(parent=self)
+        if not selected.isValid():
+            return
+        self._set_cell_color(row, period, selected.name())
+
+    def _clear_cell_color(self, row: int, period: int) -> None:
+        colors = self._get_row_color_overrides(row)
+        if period not in colors:
+            return
+        colors.pop(period, None)
+        self._set_row_color_overrides(row, colors)
+        self._recolor_row(row)
+        self.tasks_updated.emit(self.get_tasks())
+
+    def _set_row_color(self, row: int, color_hex: str) -> None:
+        color_name = QColor(color_hex).name()
+        overrides = {period: color_name for period in range(1, self.duration + 1)}
+        self._set_row_color_overrides(row, overrides)
+        self._recolor_row(row)
+        self.tasks_updated.emit(self.get_tasks())
+
+    def _pick_and_set_row_color(self, row: int) -> None:
+        selected = QColorDialog.getColor(parent=self)
+        if not selected.isValid():
+            return
+        self._set_row_color(row, selected.name())
+
+    def _clear_row_colors(self, row: int) -> None:
+        colors = self._get_row_color_overrides(row)
+        if not colors:
+            return
+        self._set_row_color_overrides(row, {})
+        self._recolor_row(row)
+        self.tasks_updated.emit(self.get_tasks())
+
+    def _set_diamond_marker(self, row: int, period: int, placement: str, color_hex: str) -> None:
+        markers = self._get_row_diamond_markers(row)
+        markers[period] = (placement, QColor(color_hex).name())
+        self._set_row_diamond_markers(row, markers)
+        self._recolor_row(row)
+        self.tasks_updated.emit(self.get_tasks())
+
+    def _pick_and_set_diamond_marker(self, row: int, period: int, placement: str) -> None:
+        selected = QColorDialog.getColor(parent=self)
+        if not selected.isValid():
+            return
+        self._set_diamond_marker(row, period, placement, selected.name())
+
+    def _remove_diamond_marker(self, row: int, period: int) -> None:
+        markers = self._get_row_diamond_markers(row)
+        if period not in markers:
+            return
+        markers.pop(period, None)
+        self._set_row_diamond_markers(row, markers)
+        self._recolor_row(row)
+        self.tasks_updated.emit(self.get_tasks())
+
     def _recolor_all_rows(self) -> None:
         for row in range(self.rowCount()):
             self._recolor_row(row)
 
     def _recolor_row(self, row: int, *, draw_bars: bool = True) -> None:
         """Refresh the miniature bar visualization for a single row."""
+        default_bar_color = QColor("#1976d2")
+        if self._is_work_package(row):
+            default_bar_color = QColor("#8d6e63")
+        segments = self._get_row_segments(row) if draw_bars and row != self.blank_row_index else []
+        overrides = self._get_row_color_overrides(row)
+        diamonds = self._get_row_diamond_markers(row)
         for col in range(self.timeline_start_col, self.columnCount()):
             item = self.item(row, col)
             if item is None:
                 item = self._make_cell(selectable=True)
                 self.setItem(row, col, item)
-            item.setBackground(QColor("white"))
-        if row == self.blank_row_index or not draw_bars:
-            return
-        segments = self._get_row_segments(row)
-        if not segments:
-            return
-        color = QColor("#1976d2")
-        if self._is_work_package(row):
-            color = QColor("#8d6e63")
-        for start, end in segments:
-            for period in range(start, end + 1):
-                col = self.timeline_start_col + period - 1
-                if 0 <= col < self.columnCount():
-                    item = self.item(row, col)
-                    if item is None:
-                        item = self._make_cell(selectable=True)
-                        self.setItem(row, col, item)
-                    item.setBackground(color)
+            period = col - self.timeline_start_col + 1
+            background = QColor("white")
+            for start, end in segments:
+                if start <= period <= end:
+                    background = default_bar_color
+                    break
+            if period in overrides:
+                override_color = QColor(overrides[period])
+                if override_color.isValid():
+                    background = override_color
+            item.setBackground(background)
+            item.setText("")
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            item.setForeground(QColor("black"))
+            marker = diamonds.get(period)
+            if marker:
+                placement, color = marker
+                marker_color = QColor(color)
+                if not marker_color.isValid():
+                    marker_color = QColor("black")
+                item.setText(_DIAMOND_SYMBOL)
+                if placement == "boundary":
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
+                else:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                item.setForeground(marker_color)
 
     def _row_has_complete_dates(self, row: int) -> bool:
         if self._get_row_segments(row):
@@ -528,7 +770,9 @@ class TaskTableWidget(QTableWidget):
             start = self._read_optional_int(row, 1)
             end = self._read_optional_int(row, 2)
             segments = list(self._get_row_segments(row))
-            if not name and start is None and end is None and not segments:
+            row_colors = self._get_row_color_overrides(row)
+            row_diamonds = self._get_row_diamond_markers(row)
+            if not name and start is None and end is None and not segments and not row_colors and not row_diamonds:
                 continue
             if not segments and start is not None and end is not None:
                 segments = [(start, end)]
@@ -540,6 +784,8 @@ class TaskTableWidget(QTableWidget):
                 end=derived_end,
                 work_package=self._is_work_package(row),
                 segments=segments,
+                cell_colors=row_colors,
+                diamond_markers=row_diamonds,
             )
             tasks.append(task)
         return tasks
@@ -563,6 +809,8 @@ class TaskTableWidget(QTableWidget):
                 self._write_optional_int(row, 1, task.start)
                 self._write_optional_int(row, 2, task.end)
             self.item(row, 0).setData(Qt.ItemDataRole.UserRole, task.work_package)
+            self._set_row_color_overrides(row, task.cell_colors)
+            self._set_row_diamond_markers(row, task.diamond_markers)
         self._append_blank_row()
         self._block_cell = False
         self._recolor_all_rows()
@@ -590,6 +838,8 @@ class TaskTableWidget(QTableWidget):
                 end=task.end,
                 work_package=task.work_package,
                 segments=list(task.segments),
+                cell_colors=dict(task.cell_colors),
+                diamond_markers=dict(task.diamond_markers),
             )
             for task in self.get_tasks()
         ]
@@ -830,6 +1080,7 @@ class MainWindow(QMainWindow):
         self.table = TaskTableWidget(_DEFAULT_DURATION)
         self.summary = SummaryRowWidget(_DEFAULT_DURATION)
         self.undo_action: QAction | None = None
+        self._syncing_scrollbars = False
         # Wire up the table so the summary row and menu items stay in sync.
         self.table.tasks_updated.connect(self._update_summary)
         self.table.undo_available.connect(self._handle_undo_available)
@@ -837,6 +1088,7 @@ class MainWindow(QMainWindow):
         self._update_summary(self.table.get_tasks())
         self._build_layout()
         self._build_menu()
+        self._wire_scrollbars()
         self._resize_initial()
 
     def _build_layout(self) -> None:
@@ -904,7 +1156,7 @@ class MainWindow(QMainWindow):
         """Recalculate how many tasks overlap each period and mirror widths."""
         counts = [0] * self.table.duration
         for task in tasks:
-            if not task.has_schedule():
+            if task.work_package or not task.has_schedule():
                 continue
             for start, end in task.segments:
                 clamped_start = max(1, min(start, self.table.duration))
@@ -1035,6 +1287,26 @@ class MainWindow(QMainWindow):
         columns = min(self.summary.columnCount(), self.table.columnCount())
         for col in range(columns):
             self.summary.setColumnWidth(col, self.table.columnWidth(col))
+
+    def _wire_scrollbars(self) -> None:
+        table_scroll = self.table.horizontalScrollBar()
+        summary_scroll = self.summary.horizontalScrollBar()
+        table_scroll.valueChanged.connect(self._handle_table_scroll)
+        summary_scroll.valueChanged.connect(self._handle_summary_scroll)
+
+    def _handle_table_scroll(self, value: int) -> None:
+        if self._syncing_scrollbars:
+            return
+        self._syncing_scrollbars = True
+        self.summary.horizontalScrollBar().setValue(value)
+        self._syncing_scrollbars = False
+
+    def _handle_summary_scroll(self, value: int) -> None:
+        if self._syncing_scrollbars:
+            return
+        self._syncing_scrollbars = True
+        self.table.horizontalScrollBar().setValue(value)
+        self._syncing_scrollbars = False
 
     def _prompt_save_destination(self, *, directory: str | None = None) -> Optional[Path]:
         path, _ = QFileDialog.getSaveFileName(

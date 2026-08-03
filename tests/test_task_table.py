@@ -213,6 +213,35 @@ def test_diamond_marker_roundtrip_and_rendering(qapp: QApplication) -> None:
     assert reloaded[0].diamond_markers == tasks[0].diamond_markers
 
 
+def _row_with_text(table: TaskTableWidget, text: str) -> int:
+    for row in range(table.rowCount()):
+        item = table.item(row, 0)
+        if item is not None and item.text() == text:
+            return row
+    raise AssertionError(f"no row found with text {text!r}")
+
+
+def test_long_task_names_wrap_and_grow_row_height(qapp: QApplication) -> None:
+    table = TaskTableWidget(6)
+    assert table.wordWrap()
+
+    long_name = "A very long task label that should wrap across several lines"
+    table.set_tasks(
+        [
+            Task(name="Short", start=1, end=2),
+            Task(name=long_name, start=1, end=3),
+        ]
+    )
+
+    table.setColumnWidth(0, 120)
+    table._update_all_row_heights()
+    qapp.processEvents()
+
+    short_height = table.rowHeight(_row_with_text(table, "Short"))
+    long_height = table.rowHeight(_row_with_text(table, long_name))
+    assert long_height > short_height
+
+
 def test_boundary_diamond_snaps_to_nearest_edge(qapp: QApplication) -> None:
     table = TaskTableWidget(6)
     table.set_tasks([Task(name="Milestone", start=2, end=5)])

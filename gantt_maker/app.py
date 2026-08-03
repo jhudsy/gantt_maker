@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QItemSelectionModel, QMimeData
+from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QItemSelectionModel, QMimeData, QRectF
 from PyQt6.QtGui import QAction, QColor, QCloseEvent, QKeySequence
 from PyQt6.QtWidgets import (
     QApplication,
@@ -143,6 +143,8 @@ class TaskTableWidget(QTableWidget):
         self.customContextMenuRequested.connect(self._show_context_menu)
         self.cellChanged.connect(self._handle_cell_changed)
         self.verticalHeader().setVisible(False)
+        self.setWordWrap(True)
+        self.setTextElideMode(Qt.TextElideMode.ElideNone)
         self.setMouseTracking(True)
         self.itemSelectionChanged.connect(self._limit_selection_to_text_columns)
         self.setDragEnabled(True)
@@ -168,6 +170,7 @@ class TaskTableWidget(QTableWidget):
         self.setHorizontalHeaderLabels(column_labels)
         self._configure_column_widths()
         self._recolor_all_rows()
+        self._update_all_row_heights()
         self.tasks_updated.emit(self.get_tasks())
 
     def _configure_column_widths(self) -> None:
@@ -369,6 +372,8 @@ class TaskTableWidget(QTableWidget):
             self._normalize_dates(row)
         draw_bars = self._row_has_complete_dates(row)
         self._recolor_row(row, draw_bars=draw_bars)
+        if column == 0:
+            self._update_row_height(row)
         self._ensure_blank_row()
         self.tasks_updated.emit(self.get_tasks())
 
@@ -426,9 +431,12 @@ class TaskTableWidget(QTableWidget):
         text_value = "" if value is None else str(value)
         if item.text() == text_value:
             return
+        # Preserve any outer suppression (e.g. set_tasks) so writing dates here
+        # doesn't re-enable cellChanged mid-rebuild and spawn phantom blank rows.
+        previous_block = self._block_cell
         self._block_cell = True
         item.setText(text_value)
-        self._block_cell = False
+        self._block_cell = previous_block
 
     def _write_int(self, row: int, col: int, value: int) -> None:
         self._write_optional_int(row, col, value)
@@ -866,6 +874,7 @@ class TaskTableWidget(QTableWidget):
         self._append_blank_row()
         self._block_cell = False
         self._recolor_all_rows()
+        self._update_all_row_heights()
         self.tasks_updated.emit(self.get_tasks())
 
     def reset_undo_stack(self) -> None:
@@ -909,9 +918,44 @@ class TaskTableWidget(QTableWidget):
         """Notify any listeners (menu items) that undo availability changed."""
         self.undo_available.emit(bool(self._undo_stack))
 
-    def _handle_header_resized(self, _section: int, _old: int, _new: int) -> None:
+    def _handle_header_resized(self, section: int, _old: int, _new: int) -> None:
         """Mirror user-driven column width changes to the summary row."""
         self.column_widths_updated.emit()
+        if section == 0:
+            self._update_all_row_heights()
+
+    _ROW_PADDING = 6
+    _ROW_HEIGHT_MIN = 24
+
+    def _row_text_padding(self) -> int:
+        return self._ROW_PADDING
+
+    def _update_row_height(self, row: int) -> None:
+        """Resize a row to fit the wrapped task name within column 0's width."""
+        if row < 0 or row >= self.rowCount():
+            return
+        item = self.item(row, 0)
+        text = item.text() if item else ""
+        column_width = self.columnWidth(0)
+        padding = self._row_text_padding()
+        available = max(1, column_width - 2 * padding)
+        fm = self.fontMetrics()
+        line_height = fm.lineSpacing()
+        if not text:
+            target = max(self._ROW_HEIGHT_MIN, line_height + 2 * padding)
+        else:
+            bounding = fm.boundingRect(
+                QRectF(0.0, 0.0, float(available), 100000.0).toRect(),
+                int(Qt.TextFlag.TextWordWrap),
+                text,
+            )
+            target = max(self._ROW_HEIGHT_MIN, bounding.height() + 2 * padding)
+        if self.rowHeight(row) != target:
+            self.setRowHeight(row, target)
+
+    def _update_all_row_heights(self) -> None:
+        for row in range(self.rowCount()):
+            self._update_row_height(row)
 
     # Drag handling -----------------------------------------------------
     def mousePressEvent(self, event):  # type: ignore[override]
@@ -1299,11 +1343,31 @@ class MainWindow(QMainWindow):
                 )
                 == QMessageBox.StandardButton.Yes
             )
-            export_as_pdf(path, self.table.duration, tasks, include_dates=include_dates)
+            export_as_pdf(
+                path,
+                self.table.duration,
+                tasks,
+                include_dates=include_dates,
+                task_width_ratio=self._task_column_width_ratio(),
+            )
             self.statusBar().showMessage(f"Exported PDF to {path}", 3000)
         else:
             export_as_csv(path, self.table.duration, tasks)
             self.statusBar().showMessage(f"Exported CSV to {path}", 3000)
+
+    def _task_column_width_ratio(self) -> Optional[float]:
+        """Task width expressed in timeline-period columns, for the PDF export.
+
+        The PDF lives in a different coordinate space than the screen, so we
+        carry the *ratio* of the Task column to a single period column rather
+        than a raw pixel width. That keeps the exported Task column the same
+        relative size the user dialed in before exporting.
+        """
+        period_width = self.table.columnWidth(self.table.timeline_start_col)
+        task_width = self.table.columnWidth(0)
+        if period_width <= 0 or task_width <= 0:
+            return None
+        return task_width / period_width
 
     def action_change_duration(self) -> None:
         """Prompt for a new duration and clamp existing tasks."""
